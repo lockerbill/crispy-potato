@@ -54,6 +54,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStepProvider, OpenAiWhisperTimingProvider>();
         // Dựng video
         services.AddSingleton<IStepProvider, FfmpegRenderProvider>();
+        services.AddSingleton<IStepProvider, ShotstackSandboxRenderProvider>();
+        services.AddSingleton<IStepProvider, ShotstackProductionRenderProvider>();
         // Thumbnail
         services.AddSingleton<IStepProvider, LocalThumbnailProvider>();
         services.AddSingleton<IStepProvider, CloudflareThumbnailProvider>();

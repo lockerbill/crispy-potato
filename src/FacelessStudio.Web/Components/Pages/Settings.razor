@@ -1,0 +1,126 @@
+@page "/settings"
+@inject SettingsStore Store
+@inject StudioService Studio
+@inject SystemChecks Checks
+
+<PageTitle>Cài đặt – Faceless Studio</PageTitle>
+
+<h1>Cài đặt</h1>
+<p class="lead">
+    API key và đường dẫn được lưu trên máy tại <code>@Path.Combine(Store.DataDir, "settings.json")</code>.
+    Ô để trống sẽ dùng biến môi trường cùng tên (nếu có) hoặc giá trị mặc định.
+</p>
+
+@if (saved)
+{
+    <div class="alert ok">Đã lưu cài đặt.</div>
+}
+
+<section class="card">
+    <h2>Kiểm tra phần mềm trên máy</h2>
+    <div class="row">
+        <button class="btn" @onclick="() => Run(Checks.FfmpegAsync)">FFmpeg</button>
+        <button class="btn" @onclick="() => Run(Checks.PiperAsync)">Piper</button>
+        <button class="btn" @onclick="() => Run(Checks.OllamaAsync)">Ollama</button>
+        <button class="btn" @onclick="() => Run(Checks.ComfyUiAsync)">ComfyUI</button>
+    </div>
+    @if (check != null)
+    {
+        <div class="alert @(check.Ok ? "ok" : "warn")" style="margin-top:.75rem">@check.Message</div>
+    }
+</section>
+
+<section class="card">
+    <h2>Provider sẵn sàng</h2>
+    <p class="small muted">Dấu ✓ nghĩa là đã đủ cấu hình. Với provider self-hosted (Ollama, ComfyUI...) hãy bấm nút Kiểm tra ở trên để chắc phần mềm đang chạy.</p>
+    @foreach (var step in StepInfo.All)
+    {
+        <div class="row small" style="margin-bottom:.35rem">
+            <strong style="min-width:190px">@StepInfo.Label(step)</strong>
+            @foreach (var p in Studio.Registry.For(step))
+            {
+                var ok = p.IsConfigured(current);
+                <span class="badge @p.Category" title="@StepInfo.Label(p.Category)">@(ok ? "✓" : "✕") @p.Name</span>
+            }
+        </div>
+    }
+</section>
+
+<section class="card">
+    <h2>API key &amp; cấu hình</h2>
+    @foreach (var group in SettingCatalog.All.GroupBy(d => d.Group))
+    {
+        <div class="settings-group">
+            <h3>@group.Key</h3>
+            <div class="grid-2">
+                @foreach (var def in group)
+                {
+                    <label class="field">
+                        <span>@def.Label</span>
+                        @if (def.Secret)
+                        {
+                            <div class="secret">
+                                <input type="@(revealed.Contains(def.Key) ? "text" : "password")" autocomplete="off"
+                                       @bind="values[def.Key]" placeholder="@Placeholder(def)" />
+                                <button type="button" class="btn small" @onclick="() => Toggle(def.Key)">@(revealed.Contains(def.Key) ? "Ẩn" : "Hiện")</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="text" @bind="values[def.Key]" placeholder="@Placeholder(def)" />
+                        }
+                        @if (!string.IsNullOrEmpty(def.Help))
+                        {
+                            <small>@def.Help</small>
+                        }
+                    </label>
+                }
+            </div>
+        </div>
+    }
+</section>
+
+<div class="sticky-actions">
+    <span class="small muted">Lưu xong, quay lại trang Tạo video để chọn provider vừa cấu hình.</span>
+    <span class="spacer"></span>
+    <button class="btn primary" @onclick="Save">Lưu cài đặt</button>
+</div>
+
+@code {
+    private Dictionary<string, string> values = new();
+    private HashSet<string> revealed = [];
+    private AppSettings current = default!;
+    private SystemChecks.CheckResult? check;
+    private bool saved;
+
+    protected override void OnInitialized()
+    {
+        values = SettingCatalog.All.ToDictionary(d => d.Key, d => Store.GetStored(d.Key));
+        current = Store.Current;
+    }
+
+    private string Placeholder(SettingDefinition def)
+    {
+        var env = Environment.GetEnvironmentVariable(def.Key);
+        if (!string.IsNullOrWhiteSpace(env)) return def.Secret ? "(đang dùng biến môi trường)" : env;
+        return def.Default;
+    }
+
+    private void Toggle(string key)
+    {
+        if (!revealed.Remove(key)) revealed.Add(key);
+    }
+
+    private void Save()
+    {
+        Store.Save(values);
+        current = Store.Current;
+        saved = true;
+    }
+
+    private async Task Run(Func<AppSettings, Task<SystemChecks.CheckResult>> probe)
+    {
+        check = new(true, "Đang kiểm tra...");
+        check = await probe(Store.Current);
+    }
+}

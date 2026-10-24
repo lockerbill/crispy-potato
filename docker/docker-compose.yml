@@ -1,0 +1,27 @@
+# Chạy: docker compose -f docker/docker-compose.yml up -d --build   rồi mở http://localhost:8080
+services:
+  studio:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../data:/data/data      # cài đặt, model Whisper, cache footage
+      - ../output:/data/output  # video đã tạo
+      - ../assets:/data/assets  # nhạc nền (assets/music)
+    environment:
+      # Nếu dùng Ollama ở dịch vụ bên dưới: đặt OLLAMA_URL trong trang Cài đặt thành http://ollama:11434
+      - OLLAMA_URL=http://ollama:11434
+    restart: unless-stopped
+
+  # LLM self-hosted (không bắt buộc). Sau khi chạy: docker compose exec ollama ollama pull qwen2.5:7b
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama:

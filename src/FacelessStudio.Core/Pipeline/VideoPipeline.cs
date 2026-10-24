@@ -37,7 +37,7 @@ public sealed partial class VideoPipeline(ProviderRegistry registry, SettingsSto
             {
                 if (!string.IsNullOrWhiteSpace(request.Topic)) return "Dùng chủ đề anh đã nhập.";
                 var provider = registry.Get<ITopicProvider>(PipelineStep.Topic, ProviderId(request, PipelineStep.Topic));
-                var ideas = await provider.SuggestAsync(new TopicRequest(request.Notes, 5), tempCtx);
+                var ideas = await provider.SuggestAsync(new TopicRequest(request.Niche, 5), tempCtx);
                 if (ideas.Count == 0) throw new ProviderException("Không tìm được chủ đề nào. Hãy nhập chủ đề.");
                 request.Topic = ideas[0].Title;
                 return $"Chọn chủ đề: {ideas[0].Title}";

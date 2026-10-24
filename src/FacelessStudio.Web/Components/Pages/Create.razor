@@ -1,0 +1,231 @@
+@page "/"
+@inject StudioService Studio
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Tạo video – Faceless Studio</PageTitle>
+
+<h1>Tạo video mới</h1>
+<p class="lead">Nhập nội dung, chọn ngân sách và provider cho từng bước, rồi bấm <strong>Tạo video</strong>. Chương trình tự chạy hết các bước.</p>
+
+<section class="card">
+    <h2>1. Nội dung</h2>
+    <div class="grid-2">
+        <div>
+            <label class="field">
+                <span>Ngôn ngữ</span>
+                <div class="segmented">
+                    @foreach (var l in Languages.All)
+                    {
+                        <button type="button" class="@(request.Language == l.Code ? "selected" : "")" @onclick="() => SetLanguage(l.Code)">@l.Label</button>
+                    }
+                </div>
+            </label>
+            <label class="field">
+                <span>Giọng đọc</span>
+                <div class="segmented">
+                    <button type="button" class="@(request.Voice == VoiceGender.Female ? "selected" : "")" @onclick="() => request.Voice = VoiceGender.Female">Nữ</button>
+                    <button type="button" class="@(request.Voice == VoiceGender.Male ? "selected" : "")" @onclick="() => request.Voice = VoiceGender.Male">Nam</button>
+                </div>
+            </label>
+        </div>
+        <label class="field">
+            <span>Độ dài</span>
+            <div class="segmented">
+                @foreach (var len in LengthPresets.All)
+                {
+                    <button type="button" class="@(request.Length == len.Code ? "selected" : "")" @onclick="() => request.Length = len.Code">@len.Label</button>
+                }
+            </div>
+        </label>
+    </div>
+
+    <label class="field">
+        <span>Chủ đề</span>
+        <input type="text" @bind="request.Topic" @bind:event="oninput" placeholder="Ví dụ: 5 bí ẩn chưa có lời giải dưới đáy đại dương" />
+        <small>Để trống thì AI tự chọn chủ đề bằng provider ở bước 1 khi chạy.</small>
+    </label>
+
+    <div class="grid-2">
+        <label class="field">
+            <span>Ngách / từ khoá kênh</span>
+            <input type="text" @bind="request.Niche" placeholder="khoa học, vũ trụ, lịch sử..." />
+            <small>Dùng khi AI gợi ý chủ đề.</small>
+        </label>
+        <label class="field">
+            <span>Phong cách</span>
+            <input type="text" @bind="request.Tone" placeholder="bí ẩn, hài hước, truyền cảm hứng..." />
+        </label>
+    </div>
+
+    <div class="row">
+        <button type="button" class="btn" disabled="@(suggesting || TopicIsManual)" @onclick="SuggestTopics">
+            @(suggesting ? "Đang gợi ý..." : "✨ Gợi ý chủ đề")
+        </button>
+        @if (TopicIsManual)
+        {
+            <span class="muted small">Chọn một provider ở bước "Chọn chủ đề" bên dưới để dùng gợi ý.</span>
+        }
+    </div>
+    @if (suggestError != null)
+    {
+        <div class="alert error" style="margin-top:.75rem">@suggestError</div>
+    }
+    @if (ideas.Count > 0)
+    {
+        <div class="ideas">
+            @foreach (var idea in ideas)
+            {
+                <button type="button" class="idea" @onclick="() => request.Topic = idea.Title">
+                    <strong>@idea.Title</strong>
+                    <small>@idea.Angle</small>
+                </button>
+            }
+        </div>
+    }
+
+    <label class="field" style="margin-top:1rem">
+        <span>Ghi chú thêm cho AI</span>
+        <textarea rows="2" @bind="request.Notes" placeholder="Ví dụ: nhắc tới kênh ABC ở cuối, tránh dùng từ ngữ kỹ thuật..."></textarea>
+    </label>
+
+    <details>
+        <summary><strong>Kịch bản tự viết (không bắt buộc)</strong></summary>
+        <label class="field" style="margin-top:.75rem">
+            <textarea rows="7" @bind="request.CustomScript" placeholder="Mỗi đoạn (cách nhau 1 dòng trống) là một cảnh. Lời đọc giữ nguyên, AI chỉ viết tiêu đề, mô tả, tag và từ khoá tìm hình."></textarea>
+            <small>@(request.CustomParagraphs.Count > 0 ? $"{request.CustomParagraphs.Count} cảnh" : "Để trống để AI viết kịch bản.")</small>
+        </label>
+    </details>
+</section>
+
+<section class="card">
+    <div class="card-head">
+        <h2>2. Ngân sách &amp; provider từng bước</h2>
+        <a href="settings" class="small">Cấu hình API key →</a>
+    </div>
+    <div class="grid-3" style="margin-bottom:1rem">
+        @foreach (var preset in BudgetPresets.All)
+        {
+            <button type="button" class="preset @(activePreset == preset.Code ? "selected" : "")" @onclick="() => ApplyPreset(preset)">
+                <strong>@preset.Label</strong>
+                <span class="small muted">@preset.Description</span>
+            </button>
+        }
+    </div>
+    <p class="small muted">Chọn gói để tự điền, sau đó vẫn đổi được từng bước. Provider chưa có key sẽ bị làm mờ.</p>
+
+    @foreach (var (step, i) in StepInfo.All.Select((s, i) => (s, i)))
+    {
+        <div class="step-block">
+            <div class="step-title">
+                <span class="step-num">@(i + 1)</span>
+                <h3 style="margin:0">@StepInfo.Label(step)</h3>
+            </div>
+            <ProviderPicker Step="step" Language="@request.Language" Settings="settings" Request="request"
+                            Selected="@request.Providers.GetValueOrDefault(step)"
+                            SelectedChanged="id => SetProvider(step, id)" />
+        </div>
+    }
+</section>
+
+@if (submitErrors.Count > 0)
+{
+    <div class="alert error">
+        <strong>Chưa thể tạo video:</strong>
+        <ul style="margin:.4rem 0 0">
+            @foreach (var e in submitErrors)
+            {
+                <li>@e</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="sticky-actions">
+    <div>
+        <div class="small muted cost-label">Chi phí API ước tính</div>
+        <div class="cost-total">@StudioService.Usd(Studio.EstimateCost(request))</div>
+    </div>
+    <div class="spacer"></div>
+    <span class="small muted hide-sm">@LengthPresets.Get(request.Length).Label · @Languages.Get(request.Language).Label</span>
+    <button type="button" class="btn primary big" @onclick="Submit">▶ Tạo video</button>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "from")] public string? FromJob { get; set; }
+
+    private VideoRequest request = new();
+    private AppSettings settings = default!;
+    private string? activePreset;
+    private List<TopicIdea> ideas = [];
+    private bool suggesting;
+    private string? suggestError;
+    private List<string> submitErrors = [];
+    private CancellationTokenSource cts = new();
+
+    private bool TopicIsManual =>
+        Studio.Registry.Find(request.Providers.GetValueOrDefault(PipelineStep.Topic) ?? "")?.Category is null or ProviderCategory.BuiltIn;
+
+    protected override void OnInitialized()
+    {
+        settings = Studio.Settings;
+        request = Studio.DefaultRequest(FromJob);
+    }
+
+    private void SetLanguage(string code)
+    {
+        request.Language = code;
+        // Provider không hỗ trợ ngôn ngữ mới thì để trống cho người dùng chọn lại.
+        foreach (var (step, id) in request.Providers.ToList())
+            if (Studio.Registry.Find(id) is { } p && !Studio.Registry.Supports(p, code)) request.Providers.Remove(step);
+    }
+
+    private void SetProvider(PipelineStep step, string id)
+    {
+        request.Providers[step] = id;
+        activePreset = null;
+        submitErrors.Clear();
+    }
+
+    private void ApplyPreset(BudgetPreset preset)
+    {
+        settings = Studio.Settings;
+        request.Providers = BudgetPresets.Resolve(preset, Studio.Registry, settings, request.Language);
+        activePreset = preset.Code;
+        submitErrors.Clear();
+    }
+
+    private async Task SuggestTopics()
+    {
+        suggesting = true;
+        suggestError = null;
+        try
+        {
+            ideas = (await Studio.SuggestTopicsAsync(request, cts.Token)).ToList();
+            if (ideas.Count == 0) suggestError = "Không có gợi ý nào, thử thêm từ khoá ngách kênh.";
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            suggestError = e.Message;
+        }
+        finally
+        {
+            suggesting = false;
+        }
+    }
+
+    private void Submit()
+    {
+        settings = Studio.Settings;
+        submitErrors = Studio.Validate(request);
+        if (submitErrors.Count > 0) return;
+        var job = Studio.Start(request);
+        Nav.NavigateTo($"jobs/{job.Id}");
+    }
+
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
+    }
+}

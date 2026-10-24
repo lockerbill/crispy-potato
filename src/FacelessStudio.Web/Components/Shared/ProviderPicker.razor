@@ -1,0 +1,43 @@
+@inject StudioService Studio
+
+<div class="provider-groups">
+    @foreach (var p in Studio.Registry.For(Step))
+    {
+        var reason = Studio.UnavailableReason(p, Language, Settings);
+        var selected = p.Id == Selected;
+        var cost = Request != null ? p.EstimateCostUsd(Request) : 0;
+        <button type="button"
+                class="provider @(selected ? "selected" : "") @(reason != null ? "disabled" : "")"
+                title="@reason"
+                aria-pressed="@selected"
+                @onclick="() => Pick(p, reason)">
+            <span class="badge @p.Category">@StepInfo.Label(p.Category)</span>
+            <span class="name">@p.Name</span>
+            <span class="desc">@p.Description</span>
+            <span class="cost">@p.CostNote</span>
+            @if (cost > 0)
+            {
+                <span class="cost">Ước tính video này: @StudioService.Usd(cost)</span>
+            }
+            @if (reason != null)
+            {
+                <span class="needs">⚠ @reason</span>
+            }
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PipelineStep Step { get; set; }
+    [Parameter] public string? Selected { get; set; }
+    [Parameter] public EventCallback<string> SelectedChanged { get; set; }
+    [Parameter, EditorRequired] public string Language { get; set; } = "vi";
+    [Parameter, EditorRequired] public AppSettings Settings { get; set; } = default!;
+    [Parameter] public VideoRequest? Request { get; set; }
+
+    private async Task Pick(IStepProvider p, string? reason)
+    {
+        if (reason != null) return;
+        await SelectedChanged.InvokeAsync(p.Id);
+    }
+}

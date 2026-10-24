@@ -1,0 +1,65 @@
+@page "/history"
+@inject JobManager Jobs
+@implements IDisposable
+
+<PageTitle>Lịch sử – Faceless Studio</PageTitle>
+
+<h1>Video đã tạo</h1>
+<p class="lead">Tất cả video nằm trong thư mục <code>output/</code>, mỗi video một thư mục riêng.</p>
+
+@if (Jobs.All.Count == 0)
+{
+    <div class="card">Chưa có video nào. <a href="">Tạo video đầu tiên →</a></div>
+}
+else
+{
+    <section class="card">
+        <table class="list">
+            <thead>
+                <tr>
+                    <th class="hide-sm"></th>
+                    <th>Video</th>
+                    <th class="hide-sm">Định dạng</th>
+                    <th>Trạng thái</th>
+                    <th class="hide-sm">Thời gian</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var job in Jobs.All)
+                {
+                    <tr>
+                        <td class="hide-sm">
+                            @if (job.Status == JobStatus.Done && job.Folder != null && job.Result != null)
+                            {
+                                <img src="files/@Uri.EscapeDataString(job.Folder)/@job.Result.ThumbnailFile" alt="" />
+                            }
+                        </td>
+                        <td>
+                            <a href="jobs/@job.Id"><strong>@(job.Result?.Title ?? (string.IsNullOrWhiteSpace(job.Request.Topic) ? "(AI chọn chủ đề)" : job.Request.Topic))</strong></a>
+                            @if (job.Error != null)
+                            {
+                                <div class="small muted">@job.Error</div>
+                            }
+                        </td>
+                        <td class="hide-sm small">@LengthPresets.Get(job.Request.Length).Label<br />@Languages.Get(job.Request.Language).Label</td>
+                        <td><span class="status @job.Status">@JobDetail.StatusLabel(job.Status)</span>
+                            @if (job.Status == JobStatus.Running)
+                            {
+                                <span class="small"> @job.Progress%</span>
+                            }
+                        </td>
+                        <td class="hide-sm small">@job.CreatedAt.ToString("HH:mm dd/MM/yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+}
+
+@code {
+    protected override void OnInitialized() => Jobs.JobsChanged += Refresh;
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Jobs.JobsChanged -= Refresh;
+}

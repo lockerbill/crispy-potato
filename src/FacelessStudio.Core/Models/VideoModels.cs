@@ -1,9 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace FacelessStudio.Core.Models;
 
 /// <summary>Tham số người dùng nhập trên giao diện cho một video.</summary>
 public sealed class VideoRequest
 {
     public string Topic { get; set; } = "";
+
+    /// <summary>Ngách / từ khoá của kênh, dùng khi AI gợi ý chủ đề.</summary>
+    public string Niche { get; set; } = "";
+
     public string Language { get; set; } = "vi";
     public string Length { get; set; } = "short60";
     public VoiceGender Voice { get; set; } = VoiceGender.Female;
@@ -16,12 +22,19 @@ public sealed class VideoRequest
     /// <summary>Provider được chọn cho từng bước (id provider).</summary>
     public Dictionary<PipelineStep, string> Providers { get; set; } = new();
 
-    public LanguageOption LanguageOption => Languages.Get(Language);
-    public LengthPreset LengthPreset => LengthPresets.Get(Length);
+    [JsonIgnore] public LanguageOption LanguageOption => Languages.Get(Language);
+    [JsonIgnore] public LengthPreset LengthPreset => LengthPresets.Get(Length);
 
-    public int TargetWords => (int)Math.Round(LengthPreset.Seconds * LanguageOption.WordsPerMinute / 60.0);
+    [JsonIgnore] public int TargetWords => (int)Math.Round(LengthPreset.Seconds * LanguageOption.WordsPerMinute / 60.0);
 
-    public IReadOnlyList<string> CustomParagraphs => ScriptText.SplitParagraphs(CustomScript);
+    [JsonIgnore] public IReadOnlyList<string> CustomParagraphs => ScriptText.SplitParagraphs(CustomScript);
+
+    public VideoRequest Clone()
+    {
+        var copy = (VideoRequest)MemberwiseClone();
+        copy.Providers = new Dictionary<PipelineStep, string>(Providers);
+        return copy;
+    }
 }
 
 public sealed record TopicIdea(string Title, string Angle);

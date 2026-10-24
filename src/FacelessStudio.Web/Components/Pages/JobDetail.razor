@@ -1,0 +1,186 @@
+@page "/jobs/{Id}"
+@inject JobManager Jobs
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>@(job?.Result?.Title ?? job?.Request.Topic ?? "Video") – Faceless Studio</PageTitle>
+
+@if (job == null)
+{
+    <div class="alert error">Không tìm thấy video này.</div>
+    return;
+}
+
+<div class="card-head">
+    <div>
+        <h1>@(job.Result?.Title ?? (string.IsNullOrWhiteSpace(job.Request.Topic) ? "AI đang chọn chủ đề..." : job.Request.Topic))</h1>
+        <p class="lead">
+            <span class="status @job.Status">@StatusLabel(job.Status)</span>
+            · @LengthPresets.Get(job.Request.Length).Label · @Languages.Get(job.Request.Language).Label
+            · tạo lúc @job.CreatedAt.ToString("HH:mm dd/MM/yyyy")
+            @if (job.EstimatedCostUsd > 0)
+            {
+                <span> · chi phí ước tính @StudioService.Usd(job.EstimatedCostUsd)</span>
+            }
+        </p>
+    </div>
+    <div class="row">
+        @if (job.Status is JobStatus.Queued or JobStatus.Running)
+        {
+            <button class="btn" @onclick="() => Jobs.Cancel(job.Id)">Huỷ</button>
+        }
+        <a class="btn" href="?from=@job.Id">Tạo video tương tự</a>
+    </div>
+</div>
+
+@if (job.Status is JobStatus.Queued or JobStatus.Running)
+{
+    <section class="card">
+        <div class="row" style="margin-bottom:.5rem">
+            <strong>@job.Message</strong>
+            <span class="spacer"></span>
+            <span>@job.Progress%</span>
+        </div>
+        <div class="progress"><div style="width:@(job.Progress)%"></div></div>
+    </section>
+}
+@if (job.Status == JobStatus.Failed)
+{
+    <div class="alert error"><strong>Lỗi:</strong> @job.Error</div>
+}
+
+@if (job.Status == JobStatus.Done && job.Result != null && job.Folder != null)
+{
+    var baseUrl = $"files/{Uri.EscapeDataString(job.Folder)}";
+    <section class="card">
+        <div class="result-grid">
+            <div>
+                <video class="player" controls preload="metadata" src="@($"{baseUrl}/{job.Result.VideoFile}")" poster="@($"{baseUrl}/{job.Result.ThumbnailFile}")"></video>
+                <div class="row" style="margin-top:.75rem">
+                    <a class="btn primary" href="@($"{baseUrl}/{job.Result.VideoFile}")" download>⬇ Tải video</a>
+                    <a class="btn" href="@($"{baseUrl}/{job.Result.ThumbnailFile}")" download>Thumbnail</a>
+                    <a class="btn" href="@($"{baseUrl}/{job.Result.SubtitlesFile}")" download>Phụ đề .srt</a>
+                </div>
+                <p class="small muted">Thời lượng @job.Result.DurationSeconds.ToString("0.0") giây · thư mục <code>output/@job.Folder</code></p>
+            </div>
+            <div>
+                <img class="thumb" src="@($"{baseUrl}/{job.Result.ThumbnailFile}")" alt="Thumbnail" />
+                <div class="meta-field" style="margin-top:1rem">
+                    <div class="row"><strong>Tiêu đề</strong><span class="spacer"></span><button class="btn small" @onclick="() => Copy(job.Result.Title)">Copy</button></div>
+                    <pre>@job.Result.Title</pre>
+                </div>
+                <div class="meta-field">
+                    <div class="row"><strong>Mô tả</strong><span class="spacer"></span><button class="btn small" @onclick="() => Copy(job.Result.Description)">Copy</button></div>
+                    <pre>@job.Result.Description</pre>
+                </div>
+                <div class="meta-field">
+                    <div class="row"><strong>Tag</strong><span class="spacer"></span><button class="btn small" @onclick="() => Copy(TagsText)">Copy</button></div>
+                    <pre>@(TagsText.Length > 0 ? TagsText : "(chưa có tag – provider kịch bản không tạo tag)")</pre>
+                </div>
+                @if (copied != null)
+                {
+                    <div class="alert ok small">Đã copy @copied.</div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<section class="card">
+    <h2>Các bước</h2>
+    <ol class="steps">
+        @foreach (var s in job.Steps)
+        {
+            <li class="@s.Status">
+                <span class="icon">@StepIcon(s.Status)</span>
+                <div>
+                    <strong>@StepInfo.Label(s.Step)</strong> <span class="muted small">· @s.ProviderName</span>
+                    @if (!string.IsNullOrEmpty(s.Message))
+                    {
+                        <div class="msg">@s.Message</div>
+                    }
+                </div>
+                <span class="small muted">@StepStatusLabel(s.Status)</span>
+            </li>
+        }
+    </ol>
+</section>
+
+<section class="card">
+    <h2>Nhật ký</h2>
+    <div class="logs">@string.Join("\n", job.SnapshotLogs())</div>
+</section>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private VideoJob? job;
+    private string? copied;
+    private DateTime lastRender = DateTime.MinValue;
+    private Timer? timer;
+
+    protected override void OnParametersSet()
+    {
+        if (job != null) job.Changed -= OnJobChanged;
+        job = Jobs.Get(Id);
+        if (job != null) job.Changed += OnJobChanged;
+        // Vẽ lại định kỳ để gom các cập nhật log dồn dập.
+        timer ??= new Timer(_ => InvokeAsync(StateHasChanged), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void OnJobChanged()
+    {
+        if (DateTime.UtcNow - lastRender < TimeSpan.FromMilliseconds(300)) return;
+        lastRender = DateTime.UtcNow;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private string TagsText => string.Join(", ", job?.Result?.Tags ?? []);
+
+    private async Task Copy(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("faceless.copy", text);
+            copied = text.Length > 40 ? text[..40] + "..." : text;
+        }
+        catch (JSException)
+        {
+            copied = null; // Trình duyệt chặn clipboard (vd. không phải localhost/https).
+        }
+    }
+
+    public static string StatusLabel(JobStatus s) => s switch
+    {
+        JobStatus.Queued => "Đang chờ",
+        JobStatus.Running => "Đang chạy",
+        JobStatus.Done => "Hoàn tất",
+        JobStatus.Failed => "Lỗi",
+        JobStatus.Cancelled => "Đã huỷ",
+        _ => s.ToString(),
+    };
+
+    private static string StepIcon(StepStatus s) => s switch
+    {
+        StepStatus.Done => "✓",
+        StepStatus.Skipped => "–",
+        StepStatus.Running => "●",
+        StepStatus.Failed => "✕",
+        _ => "○",
+    };
+
+    private static string StepStatusLabel(StepStatus s) => s switch
+    {
+        StepStatus.Done => "Xong",
+        StepStatus.Skipped => "Bỏ qua",
+        StepStatus.Running => "Đang chạy",
+        StepStatus.Failed => "Lỗi",
+        _ => "Chờ",
+    };
+
+    public void Dispose()
+    {
+        if (job != null) job.Changed -= OnJobChanged;
+        timer?.Dispose();
+    }
+}

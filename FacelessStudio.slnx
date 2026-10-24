@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FacelessStudio.Core/FacelessStudio.Core.csproj" />
+    <Project Path="src/FacelessStudio.Providers/FacelessStudio.Providers.csproj" />
+    <Project Path="src/FacelessStudio.Web/FacelessStudio.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FacelessStudio.Tests/FacelessStudio.Tests.csproj" />
+  </Folder>
+</Solution>

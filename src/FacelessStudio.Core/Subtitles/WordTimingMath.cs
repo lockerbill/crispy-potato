@@ -67,6 +67,30 @@ public static class WordTimingMath
         return spans[^1].End;
     }
 
+    /// <summary>
+    /// Từ danh sách chữ nhận dạng trên toàn bộ giọng đọc (Whisper), chia về từng cảnh rồi gán chữ của kịch bản.
+    /// </summary>
+    public static List<WordTiming> AssembleFromRecognized(IReadOnlyList<SceneAudio> scenes, IReadOnlyList<Scene> script,
+        IReadOnlyList<WordTiming> recognized)
+    {
+        var result = new List<WordTiming>();
+        foreach (var scene in scenes)
+        {
+            var end = scene.Start + scene.Duration;
+            var inScene = recognized
+                .Where(w => (w.Start + w.End) / 2 >= scene.Start && (w.Start + w.End) / 2 < end)
+                .Select(w => w with
+                {
+                    Start = Math.Clamp(w.Start - scene.Start, 0, scene.Duration),
+                    End = Math.Clamp(w.End - scene.Start, 0, scene.Duration),
+                })
+                .ToList();
+            var mapped = MapOnto(ScriptText.Words(script[scene.Index].Narration), inScene, 0, scene.SpeechDuration);
+            result.AddRange(Shift(mapped, scene.Start));
+        }
+        return result;
+    }
+
     /// <summary>Cộng thêm thời điểm bắt đầu cảnh vào timing tương đối.</summary>
     public static IEnumerable<WordTiming> Shift(IEnumerable<WordTiming> words, double offset) =>
         words.Select(w => w with { Start = w.Start + offset, End = w.End + offset });

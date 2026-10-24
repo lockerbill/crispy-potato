@@ -1,8 +1,10 @@
 using FacelessStudio.Core.Abstractions;
 using FacelessStudio.Providers.BuiltIn;
 using FacelessStudio.Providers.Llm;
+using FacelessStudio.Providers.Media;
 using FacelessStudio.Providers.Render;
 using FacelessStudio.Providers.Thumbnail;
+using FacelessStudio.Providers.Timing;
 using FacelessStudio.Providers.Tts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,14 +39,25 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStepProvider, ClaudeScriptProvider>();
         // Giọng đọc
         services.AddSingleton<IStepProvider, EdgeTtsProvider>();
+        services.AddSingleton<IStepProvider, PiperTtsProvider>();
+        services.AddSingleton<IStepProvider, ElevenLabsTtsProvider>();
         // Hình ảnh / footage
         services.AddSingleton<IStepProvider, GradientMediaProvider>();
+        services.AddSingleton<IStepProvider, PexelsMediaProvider>();
+        services.AddSingleton<IStepProvider, PixabayMediaProvider>();
+        services.AddSingleton<IStepProvider, ComfyUiMediaProvider>();
+        services.AddSingleton<IStepProvider, OpenAiImageMediaProvider>();
         // Timing phụ đề
         services.AddSingleton<IStepProvider, TtsTimingProvider>();
+        services.AddSingleton<IStepProvider, GroqWhisperTimingProvider>();
+        services.AddSingleton<IStepProvider, WhisperNetTimingProvider>();
+        services.AddSingleton<IStepProvider, OpenAiWhisperTimingProvider>();
         // Dựng video
         services.AddSingleton<IStepProvider, FfmpegRenderProvider>();
         // Thumbnail
         services.AddSingleton<IStepProvider, LocalThumbnailProvider>();
+        services.AddSingleton<IStepProvider, CloudflareThumbnailProvider>();
+        services.AddSingleton<IStepProvider, OpenAiThumbnailProvider>();
         return services;
     }
 }

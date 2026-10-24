@@ -1,5 +1,6 @@
 using FacelessStudio.Core.Abstractions;
 using FacelessStudio.Core.Models;
+using FacelessStudio.Core.Settings;
 
 namespace FacelessStudio.Providers;
 
@@ -14,5 +15,6 @@ public abstract class ProviderBase : IStepProvider
     public virtual string CostNote => Category == ProviderCategory.PaidCloud ? "Trả phí theo lượng dùng" : "Miễn phí";
     public virtual IReadOnlyList<string> RequiredSettings => [];
     public virtual IReadOnlyCollection<string>? SupportedLanguages => null;
+    public virtual bool IsConfigured(AppSettings settings) => RequiredSettings.All(settings.Has);
     public virtual double EstimateCostUsd(VideoRequest request) => 0;
 }

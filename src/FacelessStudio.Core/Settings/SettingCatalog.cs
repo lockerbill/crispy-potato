@@ -80,7 +80,8 @@ public static class SettingCatalog
         new(SettingKeys.PiperVoiceEn, "Giọng Piper tiếng Anh (.onnx)", "Piper TTS (self-hosted)",
             Default: "data/piper/en_US-lessac-medium.onnx"),
         new(SettingKeys.ElevenLabsApiKey, "ElevenLabs API key", "ElevenLabs", true),
-        new(SettingKeys.ElevenLabsModel, "ElevenLabs model", "ElevenLabs", Default: "eleven_multilingual_v2"),
+        new(SettingKeys.ElevenLabsModel, "ElevenLabs model", "ElevenLabs", Default: "eleven_turbo_v2_5",
+            Help: "eleven_turbo_v2_5 / eleven_flash_v2_5 hỗ trợ tiếng Việt; eleven_multilingual_v2 thì không"),
         new(SettingKeys.ElevenLabsVoiceFemale, "Voice ID giọng nữ", "ElevenLabs", Default: "21m00Tcm4TlvDq8ikWAM"),
         new(SettingKeys.ElevenLabsVoiceMale, "Voice ID giọng nam", "ElevenLabs", Default: "pNInz6obpgDQGcFmaJgB"),
 

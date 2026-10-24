@@ -43,11 +43,17 @@ public class PipelineTests
     /// Cần mạng và FFmpeg nên chỉ chạy khi đặt FACELESS_E2E=1.
     /// </summary>
     [Theory]
-    [InlineData("vi", "short30")]
-    [InlineData("en", "long3")]
-    public async Task End_to_end_with_free_providers(string language, string length)
+    [InlineData("vi", "short30", "timing-tts", "tts-edge")]
+    [InlineData("en", "long3", "timing-tts", "tts-edge")]
+    [InlineData("vi", "short30", "timing-whisper-net", "tts-edge")]
+    [InlineData("vi", "short30", "timing-whisper-net", "tts-piper")]
+    public async Task End_to_end_with_free_providers(string language, string length, string timing, string voice)
     {
         if (Environment.GetEnvironmentVariable("FACELESS_E2E") != "1") return;
+        // Whisper.net phải tải model (~75 MB với tiny) nên bật riêng.
+        if (timing == "timing-whisper-net" && Environment.GetEnvironmentVariable("FACELESS_E2E_WHISPER") != "1") return;
+        // Piper cần PIPER_PATH và PIPER_VOICE_VI trỏ tới binary và giọng .onnx.
+        if (voice == "tts-piper" && Environment.GetEnvironmentVariable("PIPER_VOICE_VI") == null) return;
 
         using var sp = BuildServices();
         var registry = Registry(sp);
@@ -71,9 +77,9 @@ public class PipelineTests
             {
                 [PipelineStep.Topic] = "topic-manual",
                 [PipelineStep.Script] = "script-custom",
-                [PipelineStep.Voice] = "tts-edge",
+                [PipelineStep.Voice] = voice,
                 [PipelineStep.Media] = "media-gradient",
-                [PipelineStep.Timing] = "timing-tts",
+                [PipelineStep.Timing] = timing,
                 [PipelineStep.Render] = "render-ffmpeg",
                 [PipelineStep.Thumbnail] = "thumb-local",
             },
@@ -88,6 +94,6 @@ public class PipelineTests
         Assert.True(File.Exists(Path.Combine(folder, "thumbnail.jpg")));
         Assert.Contains("-->", await File.ReadAllTextAsync(Path.Combine(folder, "subtitles.srt")));
         Console.WriteLine("E2E output: " + folder);
-        await File.WriteAllTextAsync(Path.Combine(Path.GetTempPath(), $"faceless-e2e-{language}.txt"), folder);
+        await File.WriteAllTextAsync(Path.Combine(Path.GetTempPath(), $"faceless-e2e-{language}-{timing}-{voice}.txt"), folder);
     }
 }

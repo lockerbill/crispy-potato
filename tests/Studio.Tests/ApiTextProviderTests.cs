@@ -254,4 +254,35 @@ public sealed class ApiTextProviderTests
         Assert.True(ex.MayHaveCharged);
         Assert.DoesNotContain("sensitive", ex.Message);
     }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task OversizedResponsesAreBoundedWithOrWithoutContentLength(bool discovery, bool unknownLength)
+    {
+        var oversized = new byte[8 * 1024 * 1024 + 1];
+        Array.Fill(oversized, (byte)'x');
+        using var client = new HttpClient(new RecordingHandler(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = unknownLength ? new UnknownLengthContent(oversized) : new ByteArrayContent(oversized)
+        })));
+        var provider = Provider(client);
+        var context = Context("deepseek");
+        var error = discovery
+            ? await Assert.ThrowsAsync<ProviderException>(() => provider.GetModels(context.Config, context.Secret, CancellationToken.None))
+            : await Assert.ThrowsAsync<ProviderException>(() => provider.Execute(context, CancellationToken.None));
+        Assert.Contains("8 MiB", error.Message);
+        Assert.Contains("Provider response exceeds", error.Message);
+        Assert.Equal(!discovery, error.MayHaveCharged);
+        Assert.Equal("original", context.Project.Topic);
+    }
+
+    private sealed class UnknownLengthContent(byte[] body) : HttpContent
+    {
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(body).AsTask();
+        protected override Task<Stream> CreateContentReadStreamAsync() => Task.FromResult<Stream>(new MemoryStream(body, false));
+    }
 }

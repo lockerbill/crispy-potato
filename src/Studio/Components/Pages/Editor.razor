@@ -6,6 +6,7 @@
 @inject MediaEngine Media
 @inject SettingsService Settings
 @inject ProviderRegistry Registry
+@inject ProviderConnectionService Connections
 @inject YouTubeService YouTube
 <PageTitle>@(project?.Name ?? "Studio") · Frame Studio</PageTitle>
 @if (project is null) { <div class="empty-state">@Ui.T("Đang tải studio…", "Loading studio…")</div> }
@@ -16,16 +17,18 @@ else
     @if (dirty) { <div class="unsaved-banner">● @Ui.T("Có thay đổi chưa lưu. Lưu nội dung đang sửa trước khi chạy.", "You have unsaved changes. Save your edits before running.")</div> }
     <div class="budget-strip"><span><span class="pulse-dot"></span>@Ui.T("Ngân sách dự án", "Project budget")</span><div class="budget-meter"><i style="width:@BudgetPercent%"></i></div><strong>$@spent.ToString("0.######") <small>/ $@project.BudgetUsd.ToString("0.##")</small></strong><span class="muted">@Ui.T("đã dùng / đang giữ", "spent / reserved")</span><button class="text-button" @onclick='() => tab = "budget"'>@Ui.T("Chi tiết", "Details") ↗</button></div>
     <div class="studio-layout">
-        <aside class="pipeline-panel panel"><p class="eyebrow">PRODUCTION PIPELINE</p><h3>@Ui.T("Từng bước, rõ ràng.", "One clear step at a time.")</h3><div class="pipeline-steps">@foreach (var s in Pipeline.Order) { var step = project.Steps[s]; <button class="pipeline-step @(active == s ? "active" : "")" @onclick="() => SelectStage(s)"><span class="pipeline-number @step.Status.ToString().ToLowerInvariant()">@(step.Status == StepStatus.Approved ? "✓" : ((int)s + 1).ToString("D2"))</span><span><strong>@Ui.StageName(s)</strong><small>@Ui.Status(step.Status)</small></span>@if (step.Status == StepStatus.Running) { <span class="spinner"></span> }</button> }</div><div class="pipeline-footer"><span>▶ YouTube</span><small>@Ui.T("Chỉ đăng sau khi anh duyệt", "Only publish after your approval")</small></div></aside>
+        <aside class="pipeline-panel panel"><p class="eyebrow">PRODUCTION PIPELINE</p><h3>@Ui.T("Từng bước, rõ ràng.", "One clear step at a time.")</h3><div class="pipeline-steps">@foreach (var s in Pipeline.Order) { var step = project.Steps[s]; <button disabled="@busy" class="pipeline-step @(active == s ? "active" : "")" @onclick="() => SelectStage(s)"><span class="pipeline-number @step.Status.ToString().ToLowerInvariant()">@(step.Status == StepStatus.Approved ? "✓" : ((int)s + 1).ToString("D2"))</span><span><strong>@Ui.StageName(s)</strong><small>@Ui.Status(step.Status)</small></span>@if (step.Status == StepStatus.Running) { <span class="spinner"></span> }</button> }</div><div class="pipeline-footer"><span>▶ YouTube</span><small>@Ui.T("Chỉ đăng sau khi anh duyệt", "Only publish after your approval")</small></div></aside>
         <div class="studio-main">
             <div class="tab-bar"><button class="@(tab == "step" ? "active" : "")" @onclick='() => tab = "step"'>@Ui.T("Công đoạn", "Stage")</button><button class="@(tab == "scenes" ? "active" : "")" @onclick='() => tab = "scenes"'>@Ui.T("Các cảnh", "Scenes") <span>@project.Scenes.Count</span></button><button class="@(tab == "preview" ? "active" : "")" @onclick='() => tab = "preview"'>Preview & YouTube</button><button class="@(tab == "budget" ? "active" : "")" @onclick='() => tab = "budget"'>@Ui.T("Chi phí & tác vụ", "Costs & jobs")</button><button class="@(tab == "history" ? "active" : "")" @onclick='() => tab = "history"'>@Ui.T("Phiên bản", "Versions")</button></div>
             @if (tab == "step")
             {
                 var step = project.Steps[active]; var provider = ProviderCatalog.Get(step.ProviderId);
                 <section class="panel stage-workspace" @oninput="MarkDirty" @onchange="MarkDirty"><div class="section-heading"><div><span class="eyebrow">STEP @(((int)active + 1).ToString("D2")) / 10</span><h2>@Ui.StageName(active)</h2></div><span class="status-badge @step.Status.ToString().ToLowerInvariant()">@Ui.Status(step.Status)</span></div>
-                <div class="form-row"><label>Provider<select value="@step.ProviderId" @onchange="e => ChangeProvider(e.Value?.ToString() ?? string.Empty)">@foreach (var candidate in ProviderCatalog.For(active)) { <option value="@candidate.Id">@candidate.Name · @Ui.Tier(candidate.Tier)</option> }</select></label>@if (provider.Model.Length > 0) { <label>Model<input @bind="step.Model" /></label> }</div>
+                <div class="form-row"><label>Provider<select disabled="@(busy || running)" value="@step.ProviderId" @onchange="e => ChangeProvider(e.Value?.ToString() ?? string.Empty)">@foreach (var candidate in ProviderCatalog.For(active)) { <option value="@candidate.Id">@candidate.Name · @Ui.Tier(candidate.Tier)</option> }</select></label>@if (provider.IsText || provider.Model.Length > 0) { <label>Model<input @bind="step.Model" list="editor-model-options" placeholder="@Ui.T("Để trống để dùng model trong Settings", "Blank uses the Settings model")" /></label> }</div>
+                <datalist id="editor-model-options">@foreach (var model in editorModels) { <option value="@model.Id">@model.Name</option> }</datalist>
+                @if (provider.SupportsModelDiscovery) { <button class="text-button" disabled="@(busy || running)" @onclick="LoadEditorModels">@Ui.T("Đọc danh sách model", "Load models") ↻</button> }
                 @if (active == Stage.Voice && provider.Id != "piper") { <label>@Ui.T("Voice ID (để trống để dùng mặc định)", "Voice ID (blank uses the default)")<input @bind="step.Voice" /></label> }
-                <div class="provider-context"><span class="tier @provider.Tier.ToString().ToLowerInvariant()">@Ui.Tier(provider.Tier)</span><p>@provider.Notice</p><a href="@($"/settings?provider={step.ProviderId}")">@Ui.T("Cấu hình", "Configure") ↗</a></div>
+                <div class="provider-context"><span class="tier @provider.Tier.ToString().ToLowerInvariant()">@Ui.Tier(provider.Tier)</span><p>@Ui.ProviderNotice(provider)</p><a href="@($"/settings?provider={step.ProviderId}")">@Ui.T("Cấu hình", "Configure") ↗</a></div>
                 @if (step.Error is not null) { <div class="alert error">@step.Error</div> }
                 @switch (active)
                 {
@@ -92,7 +95,7 @@ else
     Project? project; List<AssetRow> mediaAssets = []; List<JobRow> jobs = []; List<ChargeRow> charges = []; List<RevisionRow> history = [];
     string? stepQuote; Stage active = Stage.Topic; string tab = "step"; string tagsText = ""; string? message; bool error; bool busy; bool dirty; bool running; decimal spent;
     string privacy = "private"; bool madeForKids; bool uploadApproved; Guid? reconcileId; decimal reconcileAmount; bool reconcileApproved;
-    readonly CancellationTokenSource lifetime = new(); Task? pollTask;
+    readonly CancellationTokenSource lifetime = new(); Task? pollTask; IReadOnlyList<ProviderModel> editorModels = [];
     string BudgetPercent => (project!.BudgetUsd <= 0 ? (spent > 0 ? 100 : 0) : Math.Min(100, spent / project.BudgetUsd * 100)).ToString("0.##", CultureInfo.InvariantCulture);
     protected override async Task OnInitializedAsync() { await Load(); pollTask = Poll(); }
     async Task Load() { project = await Projects.Get(Id); jobs = await Projects.Jobs(Id); charges = await Projects.Charges(Id); mediaAssets = await AssetFiles.List(Id); history = await Projects.History(Id); running = jobs.Any(j => j.Status is "Queued" or "Running"); spent = ProjectService.Committed(charges); tagsText = string.Join(", ", project.Tags); }
@@ -100,9 +103,28 @@ else
     void MarkDirty() => dirty = true;
     async Task Action(Func<Task> action) { busy = true; error = false; message = null; try { await action(); dirty = false; await Load(); } catch (Exception e) when (e is InvalidOperationException or ProviderException or IOException or HttpRequestException or OperationCanceledException) { error = true; message = e is OperationCanceledException ? Ui.T("Thao tác đã dừng.", "Operation stopped.") : e.Message; } finally { busy = false; } }
     Task Refresh() => Action(async () => { dirty = false; await Load(); });
-    void SelectStage(Stage stage) { active = stage; tab = "step"; stepQuote = null; }
-    void ChangeProvider(string id) { project!.Steps[active].ProviderId = id; project.Steps[active].Model = ProviderCatalog.Get(id).Model; dirty = true; }
-    async Task EstimateStage() { try { if (Pipeline.Dependencies(active).Any(s => !Pipeline.Usable(project!.Steps[s]))) throw new InvalidOperationException(Ui.T("Duyệt các bước đầu vào trước để có dự toán chính xác hơn.", "Approve the input stages first for a meaningful estimate.")); var cfg = await Settings.GetProvider(project!.Steps[active].ProviderId); if (ProviderCatalog.Get(cfg.Id).Tier == ProviderTier.Paid && project.Steps[active].Model != cfg.Model) throw new InvalidOperationException(Ui.T("Cập nhật giá Settings cho đúng model đã chọn.", "Update pricing in Settings for the selected model.")); var cost = BudgetService.Estimate(project, active, cfg); stepQuote = Ui.T("Giữ ngân sách dự kiến: ", "Estimated reservation: ") + "$" + cost.ToString("0.######") + Ui.T(". Không gồm hạ tầng; free tier cần còn quota. Hóa đơn provider là số cuối cùng.", ". Excludes infrastructure; free tiers need remaining quota. Provider invoices are authoritative."); } catch (InvalidOperationException e) { stepQuote = e.Message; } }
+    void SelectStage(Stage stage) { active = stage; tab = "step"; stepQuote = null; editorModels = []; }
+    async Task ChangeProvider(string id)
+    {
+        if (busy || running) return;
+        busy = true; dirty = true; editorModels = []; stepQuote = null;
+        try { var cfg = await Settings.GetProvider(id); project!.Steps[active].ProviderId = id; project.Steps[active].Model = cfg.Model; }
+        catch (InvalidOperationException e) { error = true; message = e.Message; }
+        finally { busy = false; }
+    }
+    async Task LoadEditorModels()
+    {
+        busy = true; message = null; error = false;
+        try
+        {
+            var cfg = await Settings.GetProvider(project!.Steps[active].ProviderId);
+            editorModels = await Connections.Models(cfg, lifetime.Token);
+            message = Ui.T("Nhập model ID trực tiếp nếu model cần dùng không có trong danh sách. Kiểm tra bảng giá Settings cho model đã chọn.", "Enter a model ID directly if it is not listed. Check Settings pricing for the selected model.");
+        }
+        catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException or OperationCanceledException) { error = true; message = e is OperationCanceledException ? Ui.T("Yêu cầu đã dừng.", "Request stopped.") : e.Message; }
+        finally { busy = false; }
+    }
+    async Task EstimateStage() { try { if (Pipeline.Dependencies(active).Any(s => !Pipeline.Usable(project!.Steps[s]))) throw new InvalidOperationException(Ui.T("Duyệt các bước đầu vào trước để có dự toán chính xác hơn.", "Approve the input stages first for a meaningful estimate.")); var cfg = await Settings.GetProvider(project!.Steps[active].ProviderId); if (ProviderCatalog.Get(cfg.Id).Tier == ProviderTier.Paid && project.Steps[active].Model.Length > 0 && project.Steps[active].Model != cfg.Model) throw new InvalidOperationException(Ui.T("Cập nhật giá Settings cho đúng model đã chọn.", "Update pricing in Settings for the selected model.")); var cost = BudgetService.Estimate(project, active, cfg); stepQuote = Ui.T("Giữ ngân sách dự kiến: ", "Estimated reservation: ") + "$" + cost.ToString("0.######") + Ui.T(". Không gồm hạ tầng; free tier cần còn quota. Hóa đơn provider là số cuối cùng.", ". Excludes infrastructure; free tiers need remaining quota. Provider invoices are authoritative."); } catch (InvalidOperationException e) { stepQuote = e.Message; } }
     Task SaveConfig() => Action(async () => { project = await Projects.Edit(project!, null, "Update project/provider configuration"); message = Ui.T("Đã lưu cấu hình.", "Configuration saved."); });
     Task RunNext() => Action(async () => { await Projects.RunNext(Id); message = Ui.T("Đã gửi bước tiếp theo vào hàng đợi.", "Next stage queued."); });
     Task RunStage() => Action(async () => { await Projects.Queue(Id, active); message = Ui.T("Đã xếp hàng tác vụ.", "Job queued."); });

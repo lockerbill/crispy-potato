@@ -1,29 +1,109 @@
 @page "/settings"
 @attribute [Authorize]
 @inject SettingsService Store
-@inject ProviderRegistry Registry
+@inject ProviderConnectionService Connections
+@inject ISubscriptionAuth SubscriptionAuth
 @inject YouTubeService YouTube
-@implements IDisposable
+@implements IAsyncDisposable
 <PageTitle>@Ui.T("Cài đặt", "Settings") · Frame Studio</PageTitle>
-<div class="page-heading"><div><p class="eyebrow">YOUR TOOLS, CONNECTED</p><h1>@Ui.T("Cài đặt & kết nối", "Settings & connections")</h1><p class="muted">@Ui.T("Khóa được bảo vệ trên server. Ô API key luôn để trống sau khi lưu.", "Keys are protected on the server. API key fields are always blank after saving.")</p></div></div>
+<div class="page-heading"><div><p class="eyebrow">YOUR TOOLS, CONNECTED</p><h1>@Ui.T("Cài đặt & kết nối", "Settings & connections")</h1><p class="muted">@Ui.T("Khóa và token được bảo vệ trên server. Ô API key luôn để trống sau khi lưu.", "Keys and tokens are protected on the server. API key fields are always blank after saving.")</p></div></div>
 @if (message is not null) { <div role="status" class="alert @(failed ? "error" : "success")">@message</div> }
+@if (ConnectionResult is not null) { <div role="status" class="alert @(ConnectionResult == "connected" ? "success" : "error")">@(ConnectionResult == "connected" ? Ui.T("Đã đăng nhập. Chọn model và thử tạo nội dung để kiểm tra quyền inference.", "Signed in. Select a model and generate a sample to check inference access.") : Ui.T("Chưa hoàn tất đăng nhập. Mở Studio bằng địa chỉ loopback bên dưới rồi thử lại.", "Sign-in did not complete. Open Studio at the loopback address below and try again."))</div> }
 @if (OAuthStatus is not null) { <div class="alert @(OAuthStatus == "connected" ? "success" : "error")">@(OAuthStatus == "connected" ? Ui.T("OAuth đã kết nối. Đọc và chọn kênh bên dưới.", "OAuth connected. Load and select your channel below.") : Ui.T("OAuth chưa hoàn tất. Kiểm tra client, redirect URI và quyền tài khoản, rồi kết nối lại.", "OAuth did not complete. Check the client, redirect URI, and account permissions, then reconnect."))</div> }
-<div class="settings-layout"><aside class="settings-nav panel"><span class="eyebrow">PROVIDERS</span>@foreach (var provider in ProviderCatalog.All) { <button class="@(selected == provider.Id ? "active" : "")" @onclick="() => Select(provider.Id)"><span class="provider-mini @provider.Tier.ToString().ToLowerInvariant()">@provider.Name[0]</span><span>@provider.Name<small>@Ui.Tier(provider.Tier)</small></span><span>›</span></button> }<a href="#youtube" class="youtube-shortcut">▶ YouTube OAuth</a></aside><div class="form-stack">
+<div class="settings-layout"><aside class="settings-nav panel"><span class="eyebrow">PROVIDERS</span>
+@foreach (var provider in ProviderCatalog.All)
+{
+    <button disabled="@busy" class="@(selected == provider.Id ? "active" : "")" @onclick="() => Select(provider.Id)"><span class="provider-mini @provider.Tier.ToString().ToLowerInvariant()">@provider.Name[0]</span><span>@provider.Name<small>@Ui.Tier(provider.Tier)</small></span><span>›</span></button>
+}
+<a href="#youtube" class="youtube-shortcut">▶ YouTube OAuth</a></aside><div class="form-stack">
 @if (cfg is not null)
 {
     var definition = ProviderCatalog.Get(cfg.Id);
-    <section class="panel"><div class="panel-title"><span class="provider-logo @definition.Tier.ToString().ToLowerInvariant()">@definition.Name[0]</span><div><h2>@definition.Name</h2><span class="tier @definition.Tier.ToString().ToLowerInvariant()">@Ui.Tier(definition.Tier)</span></div></div><p class="help">@definition.Notice</p>
-    @if (definition.NeedsKey) { <label>API key <span class="field-state">@(cfg.Configured ? Ui.T("Đã lưu", "Saved") : Ui.T("Chưa có", "Missing"))</span><input type="password" autocomplete="new-password" @bind="newKey" placeholder="@Ui.T("Để trống để giữ key đã lưu", "Leave blank to keep the saved key")" /></label><label class="checkbox-label"><input type="checkbox" @bind="clearKey" />@Ui.T("Xóa key đã lưu", "Remove saved key")</label> }
-    @if (cfg.Id is "ollama" or "comfyui") { <label>@Ui.T("Endpoint engine", "Engine endpoint")<input placeholder="http://host.docker.internal:11434" @bind="cfg.Endpoint" /></label> }
-    @if (definition.Model.Length > 0) { <label>Model @if (cfg.Id == "pexels") { <span class="help">photos / videos</span> }<input @bind="cfg.Model" /></label> }
-    @if (cfg.Id == "azure-speech") { <label>Azure region<input placeholder="southeastasia" @bind="cfg.Region" /></label> }
-    @if (cfg.Id == "cloudflare") { <label>Cloudflare account ID<input @bind="cfg.AccountId" /></label> }
-    @if (cfg.Id is "azure-speech" or "elevenlabs") { <label>@Ui.T("Voice ID mặc định (có thể ghi đè từng dự án)", "Default voice ID (overridable per project)")<input @bind="cfg.Voice" /></label> }
-    @if (cfg.Id is "piper" or "whisper") { <label>@Ui.T("Đường dẫn CLI", "Executable path")<input placeholder="/opt/engines/bin/…" @bind="cfg.Executable" /></label><label>@Ui.T("Đường dẫn model", "Model path")<input @bind="cfg.ModelPath" /></label>@if (cfg.Id == "piper") { <label>@Ui.T("Model giọng tiếng Anh", "English voice model")<input @bind="cfg.EnglishModelPath" /></label> }<p class="help">@Ui.T("Đường dẫn bên trong container nếu chạy Docker. Model phải được tải và kiểm tra giấy phép trước.", "Use container paths when running Docker. Download models and check their licenses first.")</p> }
-    @if (definition.Tier == ProviderTier.FreeCloud && cfg.Id != "pexels") { <label class="checkbox-label"><input type="checkbox" @bind="cfg.FreePlanConfirmed" />@Ui.T("Tôi đã kiểm tra tài khoản/resource đang thuộc gói miễn phí và biết hạn mức của nó.", "I verified that this account/resource uses a free plan and understand its quota.")</label> }
-    @if (definition.Tier == ProviderTier.Paid) { <div class="price-box"><h3>@Ui.T("Bảng giá dùng để giữ ngân sách", "Pricing used for budget reservations")</h3><p class="help">@Ui.T("Nhập giá từ tài khoản provider cho đúng model, quality và gói đang dùng. Giá thiếu sẽ chặn tác vụ.", "Enter your provider's price for the selected model, quality, and plan. Missing prices block execution.")</p><div class="form-row"><label>USD / @definition.Unit<input type="number" min="0" step="0.000001" @bind="cfg.UsdPerUnit" /></label>@if (cfg.Id == "openai-text") { <label>Output USD / million tokens<input type="number" min="0" step="0.000001" @bind="cfg.OutputUsdPerUnit" /></label> }</div><div class="form-row"><label>@Ui.T("Phiên bản/nguồn bảng giá", "Pricing version/source")<input placeholder="Model + plan + date" @bind="cfg.PriceVersion" /></label><label>@Ui.T("Ngày đã xác minh", "Verified on")<input type="date" @bind="priceDate" /></label></div></div> }
-    @if (cfg.LastCheck is not null) { <div class="connection-result"><span>@Ui.T("Lần kiểm tra gần nhất", "Last connection check") · @cfg.CheckedAt?.ToString("yyyy-MM-dd HH:mm 'UTC'")</span><p>@cfg.LastCheck</p></div> }
-    <div class="button-row"><button class="button primary" disabled="@busy" @onclick="Save">@Ui.T("Lưu cấu hình", "Save configuration")</button><button class="button secondary" disabled="@busy" @onclick="Check">@Ui.T("Lưu & kiểm tra kết nối", "Save & test connection")</button></div></section>
+    <section class="panel provider-settings" data-provider="@cfg.Id">
+        <fieldset class="provider-form-fields" disabled="@(!interactiveReady || busy)">
+        <div class="panel-title"><span class="provider-logo @definition.Tier.ToString().ToLowerInvariant()">@definition.Name[0]</span><div><h2>@definition.Name</h2><span class="tier @definition.Tier.ToString().ToLowerInvariant()">@Ui.Tier(definition.Tier)</span></div></div>
+        <p class="help">@Ui.ProviderNotice(definition)</p>
+        @if (definition.Experimental) { <p class="experimental-note">@Ui.T("Thử nghiệm: đăng nhập thành công không bảo đảm tài khoản có quyền tạo nội dung. Không tự chuyển sang API key khi bị từ chối.", "Experimental: signing in does not guarantee inference entitlement. A denied request never falls back to API-key billing.")</p> }
+        @if (definition.NeedsKey || definition.Auth == ProviderAuth.OptionalApiKey)
+        {
+            <label>@(definition.Auth == ProviderAuth.OptionalApiKey ? Ui.T("API key (không bắt buộc)", "API key (optional)") : "API key")
+                @if (definition.NeedsKey) { <span class="field-state">@(cfg.Configured ? Ui.T("Đã lưu", "Saved") : Ui.T("Chưa có", "Missing"))</span> }
+                <input type="password" autocomplete="new-password" @bind="newKey" placeholder="@Ui.T("Để trống để giữ key đã lưu", "Leave blank to keep the saved key")" />
+            </label>
+            <label class="checkbox-label"><input type="checkbox" @bind="clearKey" />@Ui.T("Xóa key đã lưu", "Remove saved key")</label>
+        }
+        @if (cfg.Id is "ollama" or "comfyui" or "custom-text")
+        {
+            <label>@(cfg.Id == "custom-text" ? Ui.T("Base URL của API", "API base URL") : Ui.T("Endpoint engine", "Engine endpoint"))<input placeholder="@(cfg.Id == "custom-text" ? "http://host.docker.internal:1234/v1" : "http://host.docker.internal:11434")" @bind="cfg.Endpoint" /></label>
+            @if (cfg.Id == "custom-text") { <p class="help">@Ui.T("Nhập base URL, không gồm /chat/completions. Giữ prefix của server; có thể để trống key cho server local.", "Enter the base URL without /chat/completions. Keep the server's path prefix; local servers may not require a key.")</p> }
+        }
+        @if (definition.Auth == ProviderAuth.OAuth)
+        {
+            <div class="provider-auth-box">
+                @if (cfg.Id == "chatgpt-subscription")
+                {
+                    <p>@Ui.T("Đăng nhập bằng browser trên cùng máy chạy Studio. Trước khi kết nối, mở địa chỉ này:", "Sign in from a browser on the same machine as Studio. Open this address before connecting:") <a href="@ChatGptSettingsUrl">@ChatGptSettingsUrl</a></p>
+                    <form method="post" action="/providers/chatgpt-subscription/connect" data-enhance="false">
+                        <AntiforgeryToken />
+                        <button type="submit" class="button primary" disabled="@busy">@Ui.T("Đăng nhập với ChatGPT", "Sign in with ChatGPT") ↗</button>
+                    </form>
+                }
+                else if (cfg.Id == "supergrok")
+                {
+                    @if (deviceFlow is null) { <button class="button primary" disabled="@busy" @onclick="BeginDevice">@Ui.T("Đăng nhập SuperGrok", "Sign in to SuperGrok") ↗</button> }
+                    else
+                    {
+                        <div class="device-login" role="status">
+                            <p>@Ui.T("Mở trang xác nhận và nhập mã:", "Open the verification page and enter this code:")</p>
+                            <strong class="device-code">@deviceFlow.UserCode</strong>
+                            <a class="button secondary" href="@deviceFlow.VerificationUrl" target="_blank" rel="noopener noreferrer">@Ui.T("Mở trang xác nhận", "Open verification page") ↗</a>
+                            <p class="help">@Ui.T("Hết hạn", "Expires"): @deviceFlow.ExpiresAt.ToString("HH:mm:ss 'UTC'")</p>
+                            <p>@deviceMessage</p>
+                            <button class="button secondary" @onclick="CancelDevice">@Ui.T("Hủy đăng nhập", "Cancel sign-in")</button>
+                        </div>
+                    }
+                }
+                <div class="button-row"><button class="button secondary" disabled="@(busy || deviceFlow is not null)" @onclick="RefreshStatus">@Ui.T("Đọc trạng thái đăng nhập", "Refresh sign-in status")</button><button class="text-button" disabled="@(busy || deviceFlow is not null)" @onclick="Disconnect">@Ui.T("Ngắt kết nối", "Disconnect")</button></div>
+            </div>
+        }
+        @if (definition.Auth == ProviderAuth.ClaudeCode)
+        {
+            <label>@Ui.T("Đường dẫn Claude Code CLI", "Claude Code executable path")<input placeholder="/opt/engines/bin/claude" @bind="cfg.Executable" /></label>
+            <p class="help">@Ui.T("Cài Claude Code nguyên bản, rồi chạy claude auth login bằng cùng OS user và môi trường với Studio. Trong Docker, dùng binary Linux và thư mục CLAUDE_CONFIG_DIR riêng được lưu trong volume. App không nhập token của Claude Code.", "Install unmodified Claude Code, then run claude auth login as the same OS user and in the same environment as Studio. In Docker, use the Linux binary and a dedicated persistent CLAUDE_CONFIG_DIR volume. Studio does not import Claude Code tokens.")</p>
+            <div class="button-row"><button class="button secondary" disabled="@busy" @onclick="RefreshStatus">@Ui.T("Đọc trạng thái Claude Code", "Refresh Claude Code status")</button><button class="text-button" disabled="@busy" @onclick="Disconnect">@Ui.T("Ngắt kết nối trong Studio", "Disconnect in Studio")</button></div><p class="help">@Ui.T("Ngắt kết nối chỉ xóa đường dẫn CLI trong Studio; không đăng xuất tài khoản Claude Code.", "Disconnecting clears the CLI path in Studio; it does not sign out of Claude Code.")</p>
+        }
+        @if (connectionStatus is not null)
+        {
+            <div class="connection-result" role="status"><strong>@(connectionStatus.Connected ? Ui.T("Có kết nối / credentials", "Connection / credentials available") : Ui.T("Chưa sẵn sàng", "Not ready"))</strong><p>@connectionStatus.Message</p>@if (connectionStatus.Account is not null) { <p>@connectionStatus.Account</p> }<small>@Ui.T("Trạng thái đăng nhập không xác nhận quota hoặc quyền chạy model.", "Sign-in status does not verify quota or model inference access.")</small></div>
+        }
+        @if (definition.IsText || definition.Model.Length > 0)
+        {
+            <label>Model @if (cfg.Id == "pexels") { <span class="help">photos / videos</span> }<input @bind="cfg.Model" list="provider-model-options" /></label>
+            <datalist id="provider-model-options">@foreach (var model in models) { <option value="@model.Id">@model.Name</option> }</datalist>
+            @if (definition.SupportsModelDiscovery) { <button class="text-button" disabled="@(busy || deviceFlow is not null)" @onclick="LoadModels">@Ui.T("Đọc danh sách model", "Load models") ↻</button> }
+            @if (definition.IsText) { <p class="help">@Ui.T("Có thể nhập model ID trực tiếp. Danh sách model không xác nhận quyền tạo nội dung.", "You can enter a model ID directly. Listing a model does not verify inference access.")</p> }
+        }
+        @if (cfg.Id == "azure-speech") { <label>Azure region<input placeholder="southeastasia" @bind="cfg.Region" /></label> }
+        @if (cfg.Id == "cloudflare") { <label>Cloudflare account ID<input @bind="cfg.AccountId" /></label> }
+        @if (cfg.Id is "azure-speech" or "elevenlabs") { <label>@Ui.T("Voice ID mặc định (có thể ghi đè từng dự án)", "Default voice ID (overridable per project)")<input @bind="cfg.Voice" /></label> }
+        @if (cfg.Id is "piper" or "whisper") { <label>@Ui.T("Đường dẫn CLI", "Executable path")<input placeholder="/opt/engines/bin/…" @bind="cfg.Executable" /></label><label>@Ui.T("Đường dẫn model", "Model path")<input @bind="cfg.ModelPath" /></label>@if (cfg.Id == "piper") { <label>@Ui.T("Model giọng tiếng Anh", "English voice model")<input @bind="cfg.EnglishModelPath" /></label> }<p class="help">@Ui.T("Đường dẫn bên trong container nếu chạy Docker. Model phải được tải và kiểm tra giấy phép trước.", "Use container paths when running Docker. Download models and check their licenses first.")</p> }
+        @if (definition.Tier == ProviderTier.FreeCloud && cfg.Id != "pexels") { <label class="checkbox-label"><input type="checkbox" @bind="cfg.FreePlanConfirmed" />@Ui.T("Tôi đã kiểm tra tài khoản/resource đang thuộc gói miễn phí và biết hạn mức của nó.", "I verified that this account/resource uses a free plan and understand its quota.")</label> }
+        @if (definition.Pricing == ProviderPricing.SubscriptionReserve)
+        {
+            <div class="price-box"><h3>@Ui.T("Dự phòng extra usage", "Extra-usage reservation")</h3><label>@Ui.T("USD dự phòng mỗi lần gọi", "USD reserved per request")<input type="number" min="0.000001" step="0.000001" @bind="cfg.SubscriptionReserveUsd" /></label><p class="help">@Ui.T("Nhập số tiền dương trước khi chạy tác vụ. Đây là dự toán để giữ ngân sách dự án, không phải giới hạn hóa đơn hoặc giá subscription. Đối soát extra usage trong tài khoản provider.", "Enter a positive amount before running a job. This reserves project budget; it is not a billing cap or a subscription price. Reconcile extra usage against the provider account.")</p></div>
+        }
+        else if (definition.Tier == ProviderTier.Paid)
+        {
+            <div class="price-box"><h3>@Ui.T("Bảng giá dùng để giữ ngân sách", "Pricing used for budget reservations")</h3><p class="help">@Ui.T("Nhập giá từ tài khoản provider cho đúng model và gói đang dùng. Giá thiếu sẽ chặn tác vụ. Endpoint local có thể nhập giá 0 đã xác nhận.", "Enter your provider's price for the selected model and plan. Missing prices block jobs. A local endpoint can use confirmed zero prices.")</p><div class="form-row"><label>@(definition.Pricing == ProviderPricing.Tokens ? Ui.T("Input USD / triệu token", "Input USD / million tokens") : "USD / " + definition.Unit)<input type="number" min="0" step="0.000001" @bind="cfg.UsdPerUnit" /></label>@if (definition.Pricing == ProviderPricing.Tokens) { <label>@Ui.T("Output USD / triệu token", "Output USD / million tokens")<input type="number" min="0" step="0.000001" @bind="cfg.OutputUsdPerUnit" /></label> }</div><div class="form-row"><label>@Ui.T("Phiên bản/nguồn bảng giá", "Pricing version/source")<input placeholder="Model + plan + date" @bind="cfg.PriceVersion" /></label><label>@Ui.T("Ngày đã xác minh", "Verified on")<input type="date" @bind="priceDate" /></label></div></div>
+        }
+        @if (cfg.LastCheck is not null) { <div class="connection-result"><span>@Ui.T("Lần kiểm tra gần nhất", "Last connection check") · @cfg.CheckedAt?.ToString("yyyy-MM-dd HH:mm 'UTC'")</span><p>@cfg.LastCheck</p></div> }
+        <div class="button-row"><button class="button primary" disabled="@(busy || deviceFlow is not null)" @onclick="Save">@Ui.T("Lưu cấu hình", "Save configuration")</button><button class="button secondary" disabled="@(busy || deviceFlow is not null)" @onclick="Check">@Ui.T("Lưu & kiểm tra xác thực", "Save & check authentication")</button></div>
+        @if (definition.IsText)
+        {
+            <div class="generation-test"><p class="help">@Ui.T("Thử tạo nội dung sẽ gửi một yêu cầu mẫu thật, có thể dùng quota hoặc phát sinh phí ngoài ngân sách dự án. Không tự chuyển provider nếu bị lỗi.", "Generating a sample sends a real request that may consume quota or incur charges outside project budgets. Failures never switch providers automatically.")</p><button class="button secondary" disabled="@(busy || deviceFlow is not null || string.IsNullOrWhiteSpace(cfg.Model))" @onclick="GenerateSample">@Ui.T("Lưu & thử tạo nội dung", "Save & generate sample")</button></div>
+        }
+        </fieldset>
+    </section>
 }
 <section class="panel" id="youtube"><div class="panel-title"><span class="provider-logo youtube">▶</span><div><h2>YouTube</h2><p>@Ui.T("Kết nối kênh để đăng video sau khi duyệt.", "Connect a channel to publish after your approval.")</p></div></div><label>Google OAuth client ID<input @bind="youtubeConfig.ClientId" /></label><label>Google OAuth client secret<input type="password" autocomplete="new-password" @bind="youtubeSecret" placeholder="@Ui.T("Để trống để giữ secret đã lưu", "Leave blank to keep the saved secret")" /></label><label>Authorized redirect URI<input readonly value="@YouTube.RedirectUri" /></label><p class="help">@Ui.T("Bật YouTube Data API v3, tạo OAuth Web application và thêm URI này. Dự án Google chưa audit có thể chỉ upload private; video trên 15 phút và custom thumbnail cần quyền tài khoản phù hợp.", "Enable YouTube Data API v3, create a Web OAuth client and add this URI. Unaudited Google projects may be restricted to private uploads; videos over 15 minutes and custom thumbnails require eligible accounts.")</p><div class="button-row"><button class="button secondary" disabled="@busy" @onclick="SaveYoutube">@Ui.T("Lưu OAuth", "Save OAuth")</button><a href="/youtube/connect" class="button primary">@Ui.T("Kết nối Google", "Connect Google") ↗</a><button class="button secondary" disabled="@busy" @onclick="LoadChannels">@Ui.T("Đọc danh sách kênh", "Load channels")</button></div>@if (youtubeConfig.ChannelId.Length > 0) { <p class="connected-channel">● @youtubeConfig.ChannelName <small>@youtubeConfig.ChannelId</small></p> }@foreach (var channel in channels) { <button class="channel-option" @onclick="() => SelectChannel(channel.Id)">@channel.Title <span>@channel.Id →</span></button> }</section>
 <section class="info-note"><strong>@Ui.T("Dữ liệu ở lại trong không gian của anh", "Your workspace owns its data")</strong><p>@Ui.T("Dự án, media và khóa bảo vệ được lưu trong volume dữ liệu. Sao lưu toàn bộ volume, bao gồm keys; không chỉ sao chép SQLite. Đừng chạy nhiều instance dùng cùng database.", "Projects, media, and protection keys live in the data volume. Back up the entire volume, including keys, rather than only SQLite. Do not run multiple instances against this database.")</p></section>
@@ -31,16 +111,94 @@
 @code {
     [SupplyParameterFromQuery(Name = "provider")] public string? ProviderQuery { get; set; }
     [SupplyParameterFromQuery(Name = "youtube")] public string? OAuthStatus { get; set; }
+    [SupplyParameterFromQuery(Name = "connection")] public string? ConnectionResult { get; set; }
+    bool interactiveReady;
     string selected = "gemini"; ProviderConfig? cfg; string newKey = ""; bool clearKey; DateTime? priceDate; bool busy; bool failed; string? message;
+    ProviderConnectionStatus? connectionStatus; IReadOnlyList<ProviderModel> models = [];
+    OAuthStartResult? deviceFlow; string? deviceMessage; CancellationTokenSource? deviceCancellation; Task? deviceTask;
+    readonly string deviceBinding = Guid.NewGuid().ToString("N");
     YouTubeConfig youtubeConfig = new(); string youtubeSecret = ""; List<(string Id, string Title)> channels = []; readonly CancellationTokenSource lifetime = new();
+    string ChatGptSettingsUrl => new Uri(new Uri(SubscriptionAuth.ChatGptRedirectUri), "/settings?provider=chatgpt-subscription").ToString();
     protected override async Task OnInitializedAsync() { if (ProviderCatalog.All.Any(p => p.Id == ProviderQuery)) selected = ProviderQuery!; await Select(selected); youtubeConfig = await Store.Get<YouTubeConfig>("youtube:config") ?? new(); }
-    async Task Select(string id) { selected = id; cfg = await Store.GetProvider(id); priceDate = cfg.PriceAsOf?.UtcDateTime.Date; newKey = ""; clearKey = false; }
-    async Task Action(Func<Task> run) { busy = true; message = null; failed = false; try { await run(); } catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException or OperationCanceledException) { failed = true; message = e is OperationCanceledException ? "Request stopped / Yêu cầu đã dừng." : e.Message; } finally { busy = false; } }
+    protected override void OnAfterRender(bool firstRender) { if (firstRender) { interactiveReady = true; StateHasChanged(); } }
+    async Task Select(string id)
+    {
+        if (busy) return;
+        busy = true;
+        try
+        {
+            await StopDevice(); selected = id; cfg = await Store.GetProvider(id); priceDate = cfg.PriceAsOf?.UtcDateTime.Date;
+            newKey = ""; clearKey = false; models = []; connectionStatus = null; message = null; failed = false;
+        }
+        finally { busy = false; }
+    }
+    async Task Action(Func<Task> run)
+    {
+        if (busy) return;
+        busy = true; message = null; failed = false;
+        try { await run(); }
+        catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException or OperationCanceledException)
+        { failed = true; message = e is OperationCanceledException ? Ui.T("Yêu cầu đã dừng.", "Request stopped.") : e.Message; }
+        finally { busy = false; }
+    }
     async Task SaveCore() { cfg!.PriceAsOf = priceDate is null ? null : new DateTimeOffset(DateTime.SpecifyKind(priceDate.Value, DateTimeKind.Utc)); await Store.SaveProvider(cfg, newKey, clearKey); newKey = ""; clearKey = false; cfg = await Store.GetProvider(selected); }
     Task Save() => Action(async () => { await SaveCore(); message = Ui.T("Đã lưu cấu hình. Chưa gọi API tạo nội dung.", "Configuration saved. No generation API was called."); });
-    Task Check() => Action(async () => { await SaveCore(); try { cfg!.LastCheck = await Registry.Get(selected).CheckConnection(cfg, await Store.Secret("provider:" + selected), lifetime.Token); } catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException) { cfg!.LastCheck = "FAIL: " + e.Message; failed = true; } cfg!.CheckedAt = DateTimeOffset.UtcNow; await Store.SaveProvider(cfg); message = cfg.LastCheck; });
+    Task Check() => Action(async () =>
+    {
+        await SaveCore();
+        try { cfg!.LastCheck = await Connections.Check(cfg, lifetime.Token); }
+        catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException) { cfg!.LastCheck = "FAIL: " + e.Message; failed = true; }
+        cfg!.CheckedAt = DateTimeOffset.UtcNow; await Store.SaveProvider(cfg); message = cfg.LastCheck;
+    });
+    Task RefreshStatus() => Action(async () => { await SaveCore(); connectionStatus = await Connections.Status(selected, lifetime.Token); });
+    Task LoadModels() => Action(async () =>
+    {
+        await SaveCore(); models = await Connections.Models(cfg!, lifetime.Token);
+        message = models.Count > 0 ? Ui.T("Đã đọc danh sách model. Vẫn có thể nhập model ID trực tiếp.", "Models loaded. You can still enter a model ID directly.") : Ui.T("Không có danh sách model. Nhập model ID trực tiếp; chưa xác nhận quyền tạo nội dung.", "No model catalog is available. Enter a model ID directly; inference access is not verified.");
+    });
+    Task GenerateSample() => Action(async () => { await SaveCore(); message = await Connections.TestGeneration(cfg!, lifetime.Token); });
+    Task Disconnect() => Action(async () => { await StopDevice(); await Connections.Disconnect(selected, lifetime.Token); cfg = await Store.GetProvider(selected); connectionStatus = null; models = []; message = Ui.T("Đã ngắt kết nối trong Studio.", "Disconnected in Studio."); });
+    Task BeginDevice() => Action(async () =>
+    {
+        await SaveCore(); await StopDevice(); deviceFlow = await SubscriptionAuth.Begin("supergrok", deviceBinding, lifetime.Token);
+        deviceMessage = Ui.T("Đang chờ xác nhận…", "Waiting for authorization…");
+        deviceCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        deviceTask = PollDevice(deviceFlow, deviceCancellation.Token);
+    });
+    async Task PollDevice(OAuthStartResult flow, CancellationToken ct)
+    {
+        try
+        {
+            while (DateTimeOffset.UtcNow < flow.ExpiresAt)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, flow.PollIntervalSeconds)), ct);
+                var status = await SubscriptionAuth.Poll("supergrok", flow.FlowId, deviceBinding, ct);
+                if (ct.IsCancellationRequested) return;
+                deviceMessage = status.Message;
+                if (status.Connected)
+                {
+                    connectionStatus = status; deviceFlow = null; cfg = await Store.GetProvider("supergrok");
+                    message = Ui.T("Đã đăng nhập SuperGrok. Thử tạo nội dung để xác minh quyền inference.", "Signed in to SuperGrok. Generate a sample to verify inference entitlement.");
+                    await InvokeAsync(StateHasChanged); return;
+                }
+                await InvokeAsync(StateHasChanged);
+            }
+            failed = true; message = Ui.T("Mã đăng nhập đã hết hạn. Bắt đầu lại để nhận mã mới.", "The sign-in code expired. Start again for a new code.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
+        catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException) { failed = true; message = e.Message; }
+        finally { if (!ct.IsCancellationRequested) { deviceFlow = null; await InvokeAsync(StateHasChanged); } }
+    }
+    Task CancelDevice() => Action(async () => { await StopDevice(); message = Ui.T("Đã hủy đăng nhập.", "Sign-in cancelled."); });
+    async Task StopDevice()
+    {
+        var pending = deviceFlow; deviceCancellation?.Cancel();
+        if (deviceTask is not null) await deviceTask;
+        deviceTask = null; deviceCancellation?.Dispose(); deviceCancellation = null; deviceFlow = null;
+        if (pending is not null) await SubscriptionAuth.CancelPending("supergrok", pending.FlowId, deviceBinding, CancellationToken.None);
+    }
     Task SaveYoutube() => Action(async () => { await Store.Save("youtube:config", youtubeConfig, youtubeSecret); youtubeSecret = ""; message = Ui.T("Đã lưu OAuth. Bấm Kết nối Google để cấp quyền.", "OAuth saved. Connect Google to authorize."); });
     Task LoadChannels() => Action(async () => { channels = await YouTube.Channels(lifetime.Token); message = Ui.T("Chọn kênh sẽ dùng để đăng video.", "Select the channel used for uploads."); });
     Task SelectChannel(string id) => Action(async () => { await YouTube.SelectChannel(id, lifetime.Token); youtubeConfig = (await Store.Get<YouTubeConfig>("youtube:config"))!; message = Ui.T("Đã chọn kênh.", "Channel selected."); });
-    public void Dispose() { lifetime.Cancel(); lifetime.Dispose(); }
+    public async ValueTask DisposeAsync() { lifetime.Cancel(); await StopDevice(); lifetime.Dispose(); }
 }

@@ -23,6 +23,30 @@ public static class SettingKeys
     public const string ClaudeModel = "CLAUDE_MODEL";
     public const string GoogleTrendsGeo = "GOOGLE_TRENDS_GEO";
 
+    public const string OpenRouterApiKey = "OPENROUTER_API_KEY";
+    public const string OpenRouterModel = "OPENROUTER_MODEL";
+    public const string ZaiApiKey = "ZAI_API_KEY";
+    public const string ZaiBaseUrl = "ZAI_BASE_URL";
+    public const string ZaiModel = "ZAI_MODEL";
+    public const string MoonshotApiKey = "MOONSHOT_API_KEY";
+    public const string MoonshotBaseUrl = "MOONSHOT_BASE_URL";
+    public const string MoonshotModel = "MOONSHOT_MODEL";
+    public const string MiniMaxApiKey = "MINIMAX_API_KEY";
+    public const string MiniMaxBaseUrl = "MINIMAX_BASE_URL";
+    public const string MiniMaxModel = "MINIMAX_MODEL";
+    public const string DeepSeekApiKey = "DEEPSEEK_API_KEY";
+    public const string DeepSeekModel = "DEEPSEEK_MODEL";
+    public const string XaiApiKey = "XAI_API_KEY";
+    public const string XaiModel = "XAI_MODEL";
+    public const string XaiOAuthModel = "XAI_OAUTH_MODEL";
+    public const string CodexModel = "CODEX_MODEL";
+    public const string CustomLlmBaseUrl = "CUSTOM_LLM_BASE_URL";
+    public const string CustomLlmApiKey = "CUSTOM_LLM_API_KEY";
+    public const string CustomLlmModel = "CUSTOM_LLM_MODEL";
+    public const string CustomLlmJsonMode = "CUSTOM_LLM_JSON_MODE";
+    public const string ClaudeCliPath = "CLAUDE_CLI_PATH";
+    public const string ClaudeCliModel = "CLAUDE_CLI_MODEL";
+
     public const string PiperPath = "PIPER_PATH";
     public const string PiperVoiceVi = "PIPER_VOICE_VI";
     public const string PiperVoiceEn = "PIPER_VOICE_EN";
@@ -70,6 +94,43 @@ public static class SettingCatalog
         new(SettingKeys.AnthropicApiKey, "Anthropic API key", "Claude (Anthropic)", true,
             Help: "Tạo tại https://platform.claude.com/settings/keys"),
         new(SettingKeys.ClaudeModel, "Claude model", "Claude (Anthropic)", Default: "claude-opus-5-5"),
+        new(SettingKeys.ClaudeCliPath, "Đường dẫn Claude Code CLI", "Claude Code CLI (gói Pro/Max)", Default: "claude",
+            Help: "Cài Claude Code (https://claude.com/claude-code) rồi chạy: claude login. Dùng hạn mức gói Claude của anh."),
+        new(SettingKeys.ClaudeCliModel, "Model (tuỳ chọn)", "Claude Code CLI (gói Pro/Max)",
+            Help: "Để trống dùng model mặc định của CLI. Ví dụ: opus, sonnet hoặc tên đầy đủ claude-..."),
+        new(SettingKeys.CodexModel, "Model", "ChatGPT / Codex (đăng nhập)", Default: "gpt-5.5",
+            Help: "Đăng nhập ở mục Tài khoản đăng nhập phía trên. Dùng hạn mức gói ChatGPT Plus/Pro."),
+        new(SettingKeys.OpenRouterApiKey, "OpenRouter API key", "OpenRouter", true,
+            Help: "Tạo tại https://openrouter.ai/keys"),
+        new(SettingKeys.OpenRouterModel, "Model", "OpenRouter", Default: "openrouter/auto",
+            Help: "Tên model trên OpenRouter, vd. anthropic/claude-sonnet-4.6, google/gemini-2.5-pro. openrouter/auto tự chọn."),
+        new(SettingKeys.ZaiApiKey, "z.ai API key", "z.ai / GLM", true, Help: "Tạo tại https://z.ai/manage-apikey/apikey-list"),
+        new(SettingKeys.ZaiBaseUrl, "Base URL", "z.ai / GLM", Default: "https://api.z.ai/api/paas/v4",
+            Help: "Gói GLM Coding Plan: https://api.z.ai/api/coding/paas/v4 · Trung Quốc: https://open.bigmodel.cn/api/paas/v4"),
+        new(SettingKeys.ZaiModel, "Model", "z.ai / GLM", Default: "glm-5"),
+        new(SettingKeys.MoonshotApiKey, "Moonshot API key", "Kimi / Moonshot", true,
+            Help: "Tạo tại https://platform.moonshot.ai/console/api-keys"),
+        new(SettingKeys.MoonshotBaseUrl, "Base URL", "Kimi / Moonshot", Default: "https://api.moonshot.ai/v1",
+            Help: "Tài khoản Trung Quốc: https://api.moonshot.cn/v1"),
+        new(SettingKeys.MoonshotModel, "Model", "Kimi / Moonshot", Default: "kimi-k2.5"),
+        new(SettingKeys.MiniMaxApiKey, "MiniMax API key", "MiniMax", true,
+            Help: "Tạo tại https://platform.minimax.io/user-center/basic-information/interface-key"),
+        new(SettingKeys.MiniMaxBaseUrl, "Base URL", "MiniMax", Default: "https://api.minimax.io/v1",
+            Help: "Tài khoản Trung Quốc: https://api.minimaxi.com/v1"),
+        new(SettingKeys.MiniMaxModel, "Model", "MiniMax", Default: "MiniMax-M2.7"),
+        new(SettingKeys.DeepSeekApiKey, "DeepSeek API key", "DeepSeek", true, Help: "Tạo tại https://platform.deepseek.com/api_keys"),
+        new(SettingKeys.DeepSeekModel, "Model", "DeepSeek", Default: "deepseek-chat",
+            Help: "deepseek-chat (nhanh) hoặc deepseek-reasoner (suy luận kỹ hơn)"),
+        new(SettingKeys.XaiApiKey, "xAI API key", "xAI (Grok)", true, Help: "Tạo tại https://console.x.ai"),
+        new(SettingKeys.XaiModel, "Model (API key)", "xAI (Grok)", Default: "grok-4.3"),
+        new(SettingKeys.XaiOAuthModel, "Model (đăng nhập SuperGrok)", "xAI (Grok)", Default: "grok-4.3",
+            Help: "Đăng nhập SuperGrok / X Premium+ ở mục Tài khoản đăng nhập phía trên, không cần API key."),
+        new(SettingKeys.CustomLlmBaseUrl, "Base URL (OpenAI-compatible)", "Custom endpoint",
+            Help: "Endpoint kiểu OpenAI /v1, vd. http://localhost:1234/v1 (LM Studio), http://localhost:8000/v1 (vLLM), LiteLLM..."),
+        new(SettingKeys.CustomLlmApiKey, "API key (tuỳ chọn)", "Custom endpoint", true),
+        new(SettingKeys.CustomLlmModel, "Model", "Custom endpoint"),
+        new(SettingKeys.CustomLlmJsonMode, "Chế độ JSON", "Custom endpoint", Default: "json_object",
+            Help: "json_object, json_schema hoặc none (nếu server không hỗ trợ response_format)"),
         new(SettingKeys.GoogleTrendsGeo, "Google Trends: mã quốc gia", "Chủ đề", Default: "VN",
             Help: "VN, US, ... dùng để lấy xu hướng tìm kiếm"),
 

@@ -1,6 +1,11 @@
 using FacelessStudio.Core.Abstractions;
+using FacelessStudio.Providers.Auth;
 using FacelessStudio.Providers.BuiltIn;
 using FacelessStudio.Providers.Llm;
+using FacelessStudio.Providers.Llm.ClaudeCli;
+using FacelessStudio.Providers.Llm.Codex;
+using FacelessStudio.Providers.Llm.Compatible;
+using FacelessStudio.Providers.Llm.Xai;
 using FacelessStudio.Providers.Media;
 using FacelessStudio.Providers.Render;
 using FacelessStudio.Providers.Thumbnail;
@@ -25,6 +30,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ClaudeClient>();
         services.AddSingleton<GoogleTrendsClient>();
 
+        // Đăng nhập tài khoản (OAuth device code)
+        services.AddSingleton<OAuthTokenStore>();
+        services.AddSingleton(sp => new OAuthSession(sp.GetRequiredService<OAuthTokenStore>()));
+        services.AddSingleton(sp => new OAuthLoginService(sp.GetServices<IOAuthAccount>(), sp.GetRequiredService<OAuthTokenStore>()));
+
         // Chủ đề
         services.AddSingleton<IStepProvider, ManualTopicProvider>();
         services.AddSingleton<IStepProvider, GeminiTopicProvider>();
@@ -37,6 +47,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStepProvider, GroqScriptProvider>();
         services.AddSingleton<IStepProvider, OllamaScriptProvider>();
         services.AddSingleton<IStepProvider, ClaudeScriptProvider>();
+        // Chủ đề + kịch bản từ các LLM cloud khác (mỗi nhóm một file đăng ký)
+        services.AddClaudeCliProviders();
+        services.AddCodexProviders();
+        services.AddXaiProviders();
+        services.AddCompatibleLlmProviders();
         // Giọng đọc
         services.AddSingleton<IStepProvider, EdgeTtsProvider>();
         services.AddSingleton<IStepProvider, PiperTtsProvider>();

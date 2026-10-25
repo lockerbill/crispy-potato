@@ -12,6 +12,10 @@ public interface ILlmClient
 {
     string Service { get; }
     IReadOnlyList<string> RequiredSettings { get; }
+
+    /// <summary>Đủ điều kiện gọi chưa. Client đăng nhập OAuth override để kiểm tra token đã lưu.</summary>
+    bool IsConfigured(AppSettings settings) => RequiredSettings.All(settings.Has);
+
     Task<string> GenerateJsonAsync(LlmRequest request, StepContext context);
 }
 

@@ -9,6 +9,7 @@ public abstract class LlmScriptProvider(ILlmClient llm) : ProviderBase, IScriptP
 {
     public override PipelineStep Step => PipelineStep.Script;
     public override IReadOnlyList<string> RequiredSettings => llm.RequiredSettings;
+    public override bool IsConfigured(AppSettings settings) => llm.IsConfigured(settings);
 
     /// <summary>Mức effort cho Claude; LLM khác bỏ qua.</summary>
     protected virtual string Effort => "medium";
@@ -28,6 +29,7 @@ public abstract class LlmTopicProvider(ILlmClient llm, GoogleTrendsClient? trend
 {
     public override PipelineStep Step => PipelineStep.Topic;
     public override IReadOnlyList<string> RequiredSettings => llm.RequiredSettings;
+    public override bool IsConfigured(AppSettings settings) => llm.IsConfigured(settings);
     protected virtual bool WebSearch => false;
 
     public async Task<IReadOnlyList<TopicIdea>> SuggestAsync(TopicRequest request, StepContext context)

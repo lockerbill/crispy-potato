@@ -1,0 +1,81 @@
+@using FacelessStudio.Providers.Auth
+@implements IDisposable
+@inject OAuthLoginService Logins
+@inject SettingsStore Store
+
+@if (Logins.Accounts.Count > 0)
+{
+    <section class="card">
+        <h2>Tài khoản đăng nhập</h2>
+        <p class="small muted">
+            Dùng gói trả phí sẵn có (ChatGPT, SuperGrok...) thay cho API key. Bấm Đăng nhập, mở link, đăng nhập rồi nhập mã.
+            Token lưu trên máy tại <code>@Path.Combine(Store.DataDir, "oauth")</code>.
+        </p>
+        @foreach (var account in Logins.Accounts)
+        {
+            var state = Logins.State(account.Id);
+            var tokens = Logins.Tokens(Store.BaseDir, account.Id);
+            var busy = state.Status is LoginStatus.Starting or LoginStatus.Waiting;
+            <div class="settings-group oauth-account">
+                <h3>@account.Name</h3>
+                <div class="row small">
+                    @if (tokens != null)
+                    {
+                        <span class="badge PaidCloud">✓ Đã đăng nhập@(string.IsNullOrEmpty(tokens.AccountLabel) ? "" : ": " + tokens.AccountLabel)</span>
+                        @if (tokens.ExpiresAt is { } exp)
+                        {
+                            <span class="muted">Token hết hạn @exp.ToLocalTime().ToString("dd/MM HH:mm") (tự gia hạn)</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="badge">✕ Chưa đăng nhập</span>
+                    }
+                    <span class="spacer"></span>
+                    @if (busy)
+                    {
+                        <button type="button" class="btn small" @onclick="() => Logins.Cancel(account.Id)">Huỷ</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn small primary" @onclick="() => { _ = Logins.Start(account.Id, Store.BaseDir); }">
+                            @(tokens == null ? "Đăng nhập" : "Đăng nhập lại")
+                        </button>
+                        @if (account.CanImport)
+                        {
+                            <button type="button" class="btn small" @onclick="() => Logins.ImportAsync(account.Id, Store.BaseDir)">Nhập từ CLI</button>
+                        }
+                        @if (tokens != null)
+                        {
+                            <button type="button" class="btn small" @onclick="() => Logins.Logout(account.Id, Store.BaseDir)">Đăng xuất</button>
+                        }
+                    }
+                </div>
+                @if (state.Status == LoginStatus.Waiting && state.VerificationUrl != null)
+                {
+                    <div class="alert ok" style="margin-top:.6rem">
+                        1. Mở <a href="@state.VerificationUrl" target="_blank" rel="noopener">@state.VerificationUrl</a><br />
+                        2. Nhập mã: <strong class="device-code">@state.UserCode</strong><br />
+                        <span class="small muted">@state.Message</span>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(state.Message))
+                {
+                    <div class="alert @(state.Status == LoginStatus.Error ? "warn" : "ok")" style="margin-top:.6rem">@state.Message</div>
+                }
+                @if (!string.IsNullOrEmpty(account.Help))
+                {
+                    <small class="muted">@account.Help</small>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    protected override void OnInitialized() => Logins.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Logins.Changed -= OnChanged;
+}

@@ -52,6 +52,21 @@ public sealed class SystemChecks(IHttpClientFactory httpFactory)
             : new(missing.Count < 2, "Piper chạy được. Thiếu file giọng: " + string.Join(", ", missing));
     }
 
+    public async Task<CheckResult> ClaudeCliAsync(AppSettings s)
+    {
+        var path = s.ResolvePath(SettingKeys.ClaudeCliPath);
+        try
+        {
+            var (code, output, err) = await FfmpegTool.ExecAsync(path, ["--version"], null, CancellationToken.None);
+            if (code != 0) return new(false, "Claude Code CLI lỗi: " + (string.IsNullOrWhiteSpace(err) ? output : err).Trim());
+            return new(true, $"Claude Code CLI OK: {output.Trim()}. Nhớ chạy claude login nếu chưa đăng nhập.");
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return new(false, $"Không chạy được Claude Code CLI \"{path}\". Cài Claude Code rồi chạy `claude login` (hoặc khai báo đường dẫn trong Cài đặt).");
+        }
+    }
+
     private async Task<CheckResult> HttpCheckAsync(string url, string name, Func<string, string> onOk)
     {
         try

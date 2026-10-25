@@ -7,6 +7,8 @@ services:
     environment:
       Studio__PublicUrl: ${STUDIO_PUBLIC_URL:-http://localhost:5080}
       AllowedHosts: ${STUDIO_ALLOWED_HOSTS:-localhost;127.0.0.1;studio}
+      Studio__ClaudeConfigDirectory: /data/claude-code
+      CLAUDE_CONFIG_DIR: /data/claude-code
       STUDIO_ADMIN_PASSWORD_FILE: /run/secrets/studio_admin_password
     secrets:
       - studio_admin_password

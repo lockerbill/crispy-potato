@@ -58,7 +58,7 @@ Ngân sách bao gồm lần chạy lại. Các khoản ước tính hoặc chưa
 
 | Công đoạn | Cloud miễn phí / sandbox | Self-hosted | Paid |
 |---|---|---|---|
-| Chủ đề / kịch bản / tiêu đề / mô tả / tag (chọn riêng) | Gemini | Ollama | OpenAI |
+| Chủ đề / kịch bản / tiêu đề / mô tả / tag (chọn riêng) | Gemini | Ollama, Custom Endpoint | OpenAI, OpenRouter, Anthropic, z.ai, Kimi, MiniMax, DeepSeek, xAI; subscription: ChatGPT/Codex, Claude Code, SuperGrok thử nghiệm |
 | Giọng đọc | Azure Speech F0 | Piper CLI | ElevenLabs |
 | Ảnh / footage | Pexels, Cloudflare Workers AI | Media upload, ComfyUI | OpenAI Images |
 | Phụ đề theo từ | Groq Whisper | whisper.cpp CLI | OpenAI Whisper |
@@ -97,3 +97,13 @@ dotnet test YouTubeStudio.slnx
 - `docs`: triển khai, provider, kiểm chứng.
 
 V1 là single-instance/single-owner. Không có thanh toán SaaS, nhiều workspace, timeline nhiều track hay avatar. SQLite schema phiên bản 1; trước thay đổi schema phải bổ sung migration và backup, không xóa database để nâng cấp.
+
+## Kết nối LLM bổ sung
+
+Xem [hướng dẫn kết nối LLM](docs/llm-connections.md) cho API key, ChatGPT OAuth,
+Claude Code subscription, SuperGrok thử nghiệm, model discovery và ngân sách extra usage.
+Các kết nối này chỉ phục vụ năm bước văn bản. API key và subscription là các lựa chọn
+riêng; ứng dụng không tự chuyển loại thanh toán khi hết quota.
+
+Nhánh tích hợp của dự án là **`codex/youtube-video-studio`**. Không merge công việc
+Studio vào `main` hoặc `claude/faceless-studio-dotnet`.

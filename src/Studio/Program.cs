@@ -29,6 +29,7 @@ builder.Services.AddAntiforgery(); builder.Services.AddRazorComponents().AddInte
 builder.Services.AddRateLimiter(o => { o.RejectionStatusCode = 429; o.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 8, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })); });
 builder.Services.AddHttpClient("providers", c => c.Timeout = TimeSpan.FromMinutes(10)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddSingleton<SettingsService>(); builder.Services.AddSingleton<AdminAuth>(); builder.Services.AddSingleton<AssetStore>(); builder.Services.AddSingleton<ProcessRunner>(); builder.Services.AddSingleton<MediaEngine>(); builder.Services.AddSingleton<ProviderHttp>();
+builder.Services.AddSingleton<IStageProvider, ApiTextProvider>();
 builder.Services.AddSingleton<IStageProvider, TextProvider>(); builder.Services.AddSingleton<IStageProvider, VoiceProvider>(); builder.Services.AddSingleton<IStageProvider, ImageProvider>(); builder.Services.AddSingleton<IStageProvider, CaptionProvider>(); builder.Services.AddSingleton<IStageProvider, RenderProvider>();
 builder.Services.AddSingleton<ProviderRegistry>(); builder.Services.AddSingleton<ProjectService>(); builder.Services.AddSingleton<JobSignals>(); builder.Services.AddSingleton<YouTubeService>();
 builder.Services.AddScoped<UiState>();

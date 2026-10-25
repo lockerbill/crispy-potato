@@ -20,6 +20,16 @@
           "SQLitePCLRaw.core": "3.0.5"
         }
       },
+      "System.IdentityModel.Tokens.Jwt": {
+        "type": "Direct",
+        "requested": "[8.14.0, )",
+        "resolved": "8.14.0",
+        "contentHash": "EYGgN/S+HK7S6F3GaaPLFAfK0UzMrkXFyWCvXpQWFYmZln3dqtbyIO7VuTM/iIIPMzkelg8ZLlBPvMhxj6nOAA==",
+        "dependencies": {
+          "Microsoft.IdentityModel.JsonWebTokens": "8.14.0",
+          "Microsoft.IdentityModel.Tokens": "8.14.0"
+        }
+      },
       "Microsoft.Data.Sqlite.Core": {
         "type": "Transitive",
         "resolved": "11.0.0-rc.2.26504.105",
@@ -70,6 +80,35 @@
         "type": "Transitive",
         "resolved": "11.0.0-rc.2.26504.105",
         "contentHash": "HN/LL/uNN7Lj74VwWRkaB26X694U+s7wwHBYvKycOUhTIMbPdCayB1bM2W6+FnYcLL1/oEDQNZLLco5bIo0FpA=="
+      },
+      "Microsoft.IdentityModel.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.14.0",
+        "contentHash": "iwbCpSjD3ehfTwBhtSNEtKPK0ICun6ov7Ibx6ISNA9bfwIyzI2Siwyi9eJFCJBwxowK9xcA1mj+jBWiigeqgcQ=="
+      },
+      "Microsoft.IdentityModel.JsonWebTokens": {
+        "type": "Transitive",
+        "resolved": "8.14.0",
+        "contentHash": "4jOpiA4THdtpLyMdAb24dtj7+6GmvhOhxf5XHLYWmPKF8ApEnApal1UnJsKO4HxUWRXDA6C4WQVfYyqsRhpNpQ==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.14.0"
+        }
+      },
+      "Microsoft.IdentityModel.Logging": {
+        "type": "Transitive",
+        "resolved": "8.14.0",
+        "contentHash": "eqqnemdW38CKZEHS6diA50BV94QICozDZEvSrsvN3SJXUFwVB9gy+/oz76gldP7nZliA16IglXjXTCTdmU/Ejg==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Abstractions": "8.14.0"
+        }
+      },
+      "Microsoft.IdentityModel.Tokens": {
+        "type": "Transitive",
+        "resolved": "8.14.0",
+        "contentHash": "lKIZiBiGd36k02TCdMHp1KlNWisyIvQxcYJvIkz7P4gSQ9zi8dgh6S5Grj8NNG7HWYIPfQymGyoZ6JB5d1Lo1g==",
+        "dependencies": {
+          "Microsoft.IdentityModel.Logging": "8.14.0"
+        }
       },
       "SQLite": {
         "type": "Transitive",

@@ -5,7 +5,7 @@ namespace Studio.Domain;
 
 public enum Stage { Topic, Script, Title, Description, Tags, Voice, Media, Captions, Thumbnail, Render }
 public enum StepStatus { Pending, Queued, Running, AwaitingReview, Approved, Stale, Failed, NeedsAttention, Cancelled }
-public enum ProviderTier { FreeCloud, SelfHosted, Paid, Sandbox }
+public enum ProviderTier { FreeCloud, SelfHosted, Paid, Sandbox, Subscription }
 public enum RunMode { Review, Automatic }
 public enum VideoFormat { Short, Long }
 public enum JobStatus { Queued, Running, Completed, Failed, NeedsAttention, Cancelled }
@@ -80,7 +80,15 @@ public class Scene
 }
 
 public record WordCue(string Text, double Start, double End);
-public record ProviderDefinition(string Id, string Name, ProviderTier Tier, Stage[] Stages, string Model, string Unit, string Notice, bool NeedsKey = true);
+public enum ProviderAuth { ApiKey, None, OptionalApiKey, OAuth, ClaudeCode }
+public enum TextProtocol { None, ChatCompletions, AnthropicMessages, Responses, ClaudeCode }
+public enum ProviderPricing { Default, Tokens, SubscriptionReserve }
+public record ProviderDefinition(string Id, string Name, ProviderTier Tier, Stage[] Stages, string Model, string Unit, string Notice, bool NeedsKey = true,
+    ProviderAuth Auth = ProviderAuth.ApiKey, TextProtocol Protocol = TextProtocol.None, ProviderPricing Pricing = ProviderPricing.Default,
+    string BaseUrl = "", bool SupportsModelDiscovery = false, bool Experimental = false)
+{
+    public bool IsText => Stages.Contains(Stage.Topic);
+}
 
 public class ProviderConfig
 {
@@ -95,6 +103,7 @@ public class ProviderConfig
     public string EnglishModelPath { get; set; } = "";
     public decimal? UsdPerUnit { get; set; }
     public decimal? OutputUsdPerUnit { get; set; }
+    public decimal? SubscriptionReserveUsd { get; set; }
     public DateTimeOffset? PriceAsOf { get; set; }
     public string PriceVersion { get; set; } = "";
     public bool Configured { get; set; }

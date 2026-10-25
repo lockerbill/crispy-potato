@@ -1,5 +1,23 @@
 # Verification record
 
+## LLM provider expansion — 2026-10-25
+
+Verified the integrated implementation at `6397201` on `codex/youtube-video-studio`.
+
+- Locked restore and Release build passed with **0 warnings and 0 errors**.
+- Complete test suite: **137 passed, 0 failed, 0 skipped**, including both real Chromium browser tests and existing FFmpeg/media tests.
+- New tests cover API contracts and bounded responses, model discovery/manual IDs, encrypted credentials, OAuth PKCE/session binding/signed ID tokens/replay, device authorization and cancellation, token rotation/disconnect, terminal Responses SSE, and an isolated fake Claude executable.
+- Budget tests cover all token-priced providers, positive subscription reservations, credential-free custom endpoints with confirmed zero prices, model-price mismatches, and distinguishing rejected requests from uncertain charges without retry/fallback.
+- Browser tests cover save vs authentication check vs billable sample, key redaction, subscription/CLI forms, cancellation preserving credentials, independent Topic/Script provider choices, exclusion from Voice/Media, VI/EN and mobile layout.
+- Final Docker image `sha256:0c985000d3901fd61ee942c298ba95ee66edbd8185e093f3fdf99f51a55104d3` built successfully. Runtime UID **1654**, host-loopback `5080` mapped to container `8080`, health, admin login, authenticated Settings, CSRF-protected OAuth begin, PKCE redirect and rejected invalid callback state passed. Test containers were stopped afterward.
+- Source, SQLite tables and existing provider IDs remain compatible; no schema migration or database deletion was required.
+
+Evidence: `.artifacts/test-results/providers-all.trx`, `.artifacts/docker-providers-smoke.txt`, `.artifacts/screenshots/subscription-settings.png`, and `.artifacts/screenshots/provider-settings-mobile.png` (generated, not committed).
+
+**Live-account limitation:** no real provider key, ChatGPT/SuperGrok OAuth grant or Claude subscription login was used. The CLI tests use a fake process, not an authenticated Claude Code installation. SuperGrok remains experimental; successful OAuth does not prove inference entitlement. This update does not deploy to a VPS or change provider account billing settings.
+
+## Original v1 verification
+
 Verified in the managed Linux x64 workspace on 2026-10-24, on branch `codex/youtube-video-studio`.
 
 ## Passed

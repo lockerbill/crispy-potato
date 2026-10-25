@@ -1,0 +1,13 @@
+# Build/runtime CA forwarding for managed cloud sessions; no CA enters image layers.
+services:
+  studio:
+    build:
+      secrets:
+        - proxy_ca
+    environment:
+      SSL_CERT_FILE: /run/secrets/proxy_ca
+    secrets:
+      - proxy_ca
+secrets:
+  proxy_ca:
+    file: /etc/ssl/certs/ca-certificates.crt

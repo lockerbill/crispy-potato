@@ -1,0 +1,6 @@
+@if (AssetId is not null)
+{
+    @if (MediaAssets.FirstOrDefault(a => a.Id == AssetId)?.ContentType.StartsWith("video/", StringComparison.Ordinal) == true) { <video controls preload="metadata" src="@($"/media/{AssetId}")"></video> }
+    else { <img loading="lazy" src="@($"/media/{AssetId}")" alt="Scene media" /> }
+}
+@code { [Parameter] public string? AssetId { get; set; } [Parameter] public List<AssetRow> MediaAssets { get; set; } = []; }

@@ -1,0 +1,29 @@
+name: Build and verify Studio
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: dotnet restore YouTubeStudio.slnx --locked-mode
+      - run: dotnet build YouTubeStudio.slnx -c Release --no-restore
+      - name: Install Chromium for Playwright
+        shell: pwsh
+        run: ./tests/Studio.Tests/bin/Release/net11.0/playwright.ps1 install --with-deps chromium
+      - run: dotnet test YouTubeStudio.slnx -c Release --no-build --logger trx --results-directory .artifacts/test-results
+        env:
+          STUDIO_SCREENSHOTS: ${{ github.workspace }}/.artifacts/screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: studio-test-results
+          path: .artifacts/

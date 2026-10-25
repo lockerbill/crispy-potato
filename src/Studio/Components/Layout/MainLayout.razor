@@ -1,0 +1,21 @@
+@inherits LayoutComponentBase
+<div class="app-shell">
+    <aside class="sidebar">
+        <a href="/" class="brand"><span class="brand-mark">F</span><span>frame<span class="brand-sub">VIDEO STUDIO</span></span><span class="beta">v1</span></a>
+        <div class="workspace-label">WORKSPACE <span>01</span></div>
+        <nav aria-label="Main navigation">
+            <NavLink href="/" Match="NavLinkMatch.All"><span class="nav-symbol">▦</span>@Ui.T("Dự án của anh", "Your projects")</NavLink>
+            <NavLink href="/new"><span class="nav-symbol">＋</span>@Ui.T("Tạo video mới", "Create a video")</NavLink>
+            <NavLink href="/providers"><span class="nav-symbol">◇</span>@Ui.T("Thư viện provider", "Provider library")</NavLink>
+            <NavLink href="/settings"><span class="nav-symbol">⚙</span>@Ui.T("Cài đặt & kết nối", "Settings & connections")</NavLink>
+        </nav>
+        <div class="sidebar-note"><span class="pulse-dot"></span> YOUR CREATIVE SPACE<p>@Ui.T("Từ ý tưởng đến khung hình cuối cùng.", "From the first idea to the final frame.")</p></div>
+        <div class="sidebar-footer"><div class="avatar">A</div><div><strong>Studio owner</strong><small>@Ui.T("Không gian cá nhân", "Personal workspace")</small></div><form method="post" action="/logout"><AntiforgeryToken /><button title="Sign out" class="icon-button">↗</button></form></div>
+    </aside>
+    <div class="main-shell">
+        <header class="topbar"><span class="breadcrumb">WORKSPACE <span>/</span> <strong>Video Studio</strong></span><div class="top-actions"><span class="local-badge"><span class="pulse-dot"></span>@Ui.T("Không gian riêng", "Private workspace")</span><button class="language-button" @onclick="ToggleLanguage">@(Ui.English ? "EN / VI" : "VI / EN")</button></div></header>
+        <main><CascadingValue Value="Ui.English">@Body</CascadingValue></main>
+        <footer class="page-footer">FRAME STUDIO <span>@Ui.T("Sáng tạo theo cách của anh.", "Create on your own terms.")</span></footer>
+    </div>
+</div>
+@code { void ToggleLanguage() { Ui.English = !Ui.English; } }

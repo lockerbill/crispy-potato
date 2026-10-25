@@ -1,0 +1,44 @@
+services:
+  studio:
+    build: .
+    image: frame-studio:local
+    ports:
+      - "127.0.0.1:5080:8080"
+    environment:
+      Studio__PublicUrl: ${STUDIO_PUBLIC_URL:-http://localhost:5080}
+      AllowedHosts: ${STUDIO_ALLOWED_HOSTS:-localhost;127.0.0.1;studio}
+      STUDIO_ADMIN_PASSWORD_FILE: /run/secrets/studio_admin_password
+    secrets:
+      - studio_admin_password
+    volumes:
+      - studio-data:/data
+      - ./engines:/opt/engines:ro
+      - ./models:/models:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+  ollama:
+    image: ollama/ollama:0.12.3
+    profiles: ["ai-cpu"]
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+  ollama-gpu:
+    image: ollama/ollama:0.12.3
+    profiles: ["ai-gpu"]
+    volumes:
+      - ollama-models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+secrets:
+  studio_admin_password:
+    file: ./.secrets/admin-password
+volumes:
+  studio-data:
+  ollama-models:

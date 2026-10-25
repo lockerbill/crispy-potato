@@ -1,0 +1,10 @@
+.git
+.studio-data
+.secrets
+**/bin
+**/obj
+**/TestResults
+.artifacts
+.cache
+**/*.user
+**/*.env

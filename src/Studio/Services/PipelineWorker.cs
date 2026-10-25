@@ -113,7 +113,11 @@ public sealed class PipelineWorker(IDbContextFactory<StudioDb> factory, ProjectS
             }
             var uncertain = e is OperationCanceledException || e is ProviderException { MayHaveCharged: true } || job.Checkpoint is not null;
             // A partial multi-request stage may have consumed quota even if the last request did not.
-            if (job.ProviderId is not ("ffmpeg" or "library" or "ollama" or "piper" or "whisper")) uncertain = true;
+            var singleTextRequest = ProviderCatalog.All.Any(p => p.Id == job.ProviderId && p.Protocol != TextProtocol.None);
+            if (!singleTextRequest && job.ProviderId is not ("ffmpeg" or "library" or "ollama" or "piper" or "whisper")) uncertain = true;
+            // New text adapters explicitly classify rejected requests versus possibly billed ones.
+            // Unexpected processing failures still need reconciliation rather than a free retry.
+            if (singleTextRequest && e is not (ProviderException or InvalidOperationException)) uncertain = true;
             if (!startedExecution) uncertain = false;
             await projects.Gate.WaitAsync(CancellationToken.None);
             try

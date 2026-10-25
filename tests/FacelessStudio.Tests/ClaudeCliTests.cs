@@ -124,5 +124,20 @@ public class ClaudeCliTests
         Assert.Contains("Google Trends", topic.Name);
     }
 
+    [Fact]
+    public void Real_client_is_configured_only_when_executable_exists()
+    {
+        var dir = Directory.CreateTempSubdirectory("faceless-cli").FullName;
+        var exe = Path.Combine(dir, "claude-fake");
+        File.WriteAllText(exe, "");
+        var client = new ClaudeCliClient();
+
+        Assert.False(client.IsConfigured(new AppSettings(new Dictionary<string, string>
+            { [SettingKeys.ClaudeCliPath] = Path.Combine(dir, "missing") }, dir)));
+        Assert.True(client.IsConfigured(new AppSettings(new Dictionary<string, string>
+            { [SettingKeys.ClaudeCliPath] = exe }, dir)));
+        Assert.Null(ClaudeCliClient.FindExecutable("definitely-not-a-real-cli-name-42"));
+    }
+
     private static object ProviderCategoryOf(IStepProvider p) => p.Category;
 }

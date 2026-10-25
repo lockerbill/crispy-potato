@@ -21,6 +21,25 @@ public sealed class ClaudeCliClient(
     public string Service => "Claude Code CLI";
     public IReadOnlyList<string> RequiredSettings => [SettingKeys.ClaudeCliPath];
 
+    /// <summary>Chỉ coi là sẵn sàng khi tìm thấy file chạy, để gói "Trả phí" không tự chọn CLI chưa cài.</summary>
+    public bool IsConfigured(AppSettings settings) =>
+        exec != null ? settings.Has(SettingKeys.ClaudeCliPath) : FindExecutable(settings.ResolvePath(SettingKeys.ClaudeCliPath)) != null;
+
+    /// <summary>Tìm file chạy theo đường dẫn, PATH, hoặc chỗ cài mặc định của Claude Code (~/.local/bin, ~/.claude/local).</summary>
+    public static string? FindExecutable(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        string[] exts = OperatingSystem.IsWindows() ? ["", ".exe", ".cmd", ".bat"] : [""];
+        if (path.Contains('/') || path.Contains('\\'))
+            return exts.Select(e => path + e).FirstOrDefault(File.Exists);
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Append(Path.Combine(home, ".local", "bin"))
+            .Append(Path.Combine(home, ".claude", "local"));
+        return dirs.SelectMany(d => exts.Select(e => Path.Combine(d, path + e))).FirstOrDefault(File.Exists);
+    }
+
     public async Task<string> GenerateJsonAsync(LlmRequest request, StepContext context)
     {
         var s = context.Settings;
@@ -44,7 +63,8 @@ public sealed class ClaudeCliClient(
         (int Code, string Out, string Err) result;
         try
         {
-            result = await _exec(s.ResolvePath(SettingKeys.ClaudeCliPath), args, context.WorkDir, context.CancellationToken, prompt);
+            var exe = s.ResolvePath(SettingKeys.ClaudeCliPath);
+            result = await _exec(exec == null ? FindExecutable(exe) ?? exe : exe, args, context.WorkDir, context.CancellationToken, prompt);
         }
         catch (Win32Exception e)
         {

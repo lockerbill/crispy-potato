@@ -76,7 +76,7 @@ public sealed class XaiAccount(IHttpClientFactory httpFactory) : IOAuthAccount
                 await Task.Delay(TimeSpan.FromSeconds(5), ct);
                 return null;
             case "access_denied":
-                throw new ProviderException("Bạn đã từ chối đăng nhập xAI.");
+                throw new ProviderException("Anh đã từ chối đăng nhập xAI.");
             case "expired_token":
                 throw new ProviderException("Mã đăng nhập xAI đã hết hạn, hãy bấm đăng nhập lại.");
             default:

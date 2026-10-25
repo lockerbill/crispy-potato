@@ -14,7 +14,7 @@ public static class XaiRegistration
 
         services.AddLlmVendor(new LlmVendorInfo("xai", "xAI Grok", ProviderCategory.PaidCloud,
                 "Grok của xAI qua API key (console.x.ai). Viết kịch bản tốt, gợi ý chủ đề có thể tìm web và X (Twitter) trực tiếp.",
-                CostNote: "~0.02-0.1 USD/video tuỳ model",
+                CostNote: "~$0.02–0.10 / video tuỳ model",
                 TopicWebSearch: true, TopicName: "Grok + Web/X search"),
             sp => new XaiClient(sp.GetRequiredService<IHttpClientFactory>()));
 

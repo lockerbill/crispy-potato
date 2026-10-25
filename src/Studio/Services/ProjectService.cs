@@ -141,6 +141,9 @@ public sealed class ProjectService(IDbContextFactory<StudioDb> factory, Settings
             if (unresolved.Count > 0) throw new InvalidOperationException("Có lần chạy chưa rõ kết quả. Tiếp tục job đã gửi hoặc xác nhận đối soát trong lịch sử trước khi tạo job mới.");
             var config = await settings.GetProvider(step.ProviderId); var provider = ProviderCatalog.Get(step.ProviderId);
             if (!provider.Stages.Contains(stage)) throw new InvalidOperationException("Provider không hỗ trợ bước này.");
+            var model = string.IsNullOrWhiteSpace(step.Model) ? config.Model : step.Model;
+            if (provider.IsText && (string.IsNullOrWhiteSpace(model) || model.Length > 256 || model.Any(char.IsControl)))
+                throw new InvalidOperationException("Chọn model hợp lệ trước khi chạy / Select a valid model before running.");
             if ((provider.NeedsKey || provider.Auth is ProviderAuth.OAuth or ProviderAuth.ClaudeCode) && !config.Configured)
                 throw new InvalidOperationException("Chưa kết nối provider. Cấu hình trong Settings / Provider is not connected. Configure it in Settings.");
             if (provider.Tier == ProviderTier.FreeCloud && provider.Id != "pexels" && !config.FreePlanConfirmed) throw new InvalidOperationException("Xác nhận tài khoản/resource đang dùng free tier trong Settings trước khi chạy; key của paid plan có thể phát sinh phí.");

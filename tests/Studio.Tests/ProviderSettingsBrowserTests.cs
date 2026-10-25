@@ -84,6 +84,12 @@ public sealed class ProviderSettingsBrowserTests
         await panel.GetByRole(AriaRole.Button, new() { Name = "Lưu cấu hình", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Status).Filter(new() { HasText = "Đã lưu cấu hình. Chưa gọi API tạo nội dung." }).WaitForAsync();
         Assert.Equal(.25m, (await host.Get<SettingsService>().GetProvider("chatgpt-subscription")).SubscriptionReserveUsd);
+        var screenshots = Environment.GetEnvironmentVariable("STUDIO_SCREENSHOTS");
+        if (screenshots is not null)
+        {
+            Directory.CreateDirectory(screenshots);
+            await page.ScreenshotAsync(new() { Path = Path.Combine(screenshots, "subscription-settings.png"), FullPage = true });
+        }
 
         await Select(page, "Claude Subscription · Claude Code");
         Assert.Equal(0, await panel.Locator("input[type=password]").CountAsync());
@@ -106,6 +112,43 @@ public sealed class ProviderSettingsBrowserTests
         Assert.Contains("Experimental: signing in does not guarantee", await panel.InnerTextAsync());
         await page.SetViewportSizeAsync(390, 844);
         Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
+        if (screenshots is not null) await page.ScreenshotAsync(new() { Path = Path.Combine(screenshots, "provider-settings-mobile.png"), FullPage = true });
+
+        // A saved provider default should land only on the text stage being edited.
+        // New text providers must never appear as voice or media options.
+        var project = await host.Get<ProjectService>().Create(new Project { Name = "Provider selection fixture" });
+        await page.SetViewportSizeAsync(1440, 1050);
+        await page.GotoAsync(origin + "/studio/" + project.Id);
+        var stagePanel = page.Locator(".stage-workspace");
+        var providerSelect = stagePanel.GetByLabel("Provider", new() { Exact = true });
+        await providerSelect.SelectOptionAsync("custom-text");
+        await Microsoft.Playwright.Assertions.Expect(stagePanel.GetByLabel("Model", new() { Exact = true })).ToHaveValueAsync("manual/model");
+        await stagePanel.GetByLabel("Model", new() { Exact = true }).FillAsync("topic/model");
+        await stagePanel.GetByRole(AriaRole.Button, new() { Name = "Lưu cấu hình", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Status).Filter(new() { HasText = "Đã lưu cấu hình." }).WaitForAsync();
+        await page.Locator(".pipeline-step").Filter(new() { HasText = "Kịch bản" }).ClickAsync();
+        await stagePanel.GetByRole(AriaRole.Heading, new() { Name = "Kịch bản", Exact = true }).WaitForAsync();
+        await providerSelect.SelectOptionAsync("chatgpt-subscription");
+        await Microsoft.Playwright.Assertions.Expect(stagePanel.GetByLabel("Model", new() { Exact = true })).ToHaveValueAsync("account-model");
+        await stagePanel.GetByLabel("Model", new() { Exact = true }).FillAsync("script/model");
+        await stagePanel.GetByRole(AriaRole.Button, new() { Name = "Lưu cấu hình", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Status).Filter(new() { HasText = "Đã lưu cấu hình." }).WaitForAsync();
+        await Microsoft.Playwright.Assertions.Expect(stagePanel.GetByRole(AriaRole.Button, new() { Name = "Lưu cấu hình", Exact = true })).ToBeEnabledAsync();
+        var configuredProject = await host.Get<ProjectService>().Get(project.Id);
+        Assert.Equal("custom-text", configuredProject.Steps[Stage.Topic].ProviderId);
+        Assert.Equal("topic/model", configuredProject.Steps[Stage.Topic].Model);
+        Assert.Equal("chatgpt-subscription", configuredProject.Steps[Stage.Script].ProviderId);
+        Assert.Equal("script/model", configuredProject.Steps[Stage.Script].Model);
+        Assert.Equal(project.Steps[Stage.Voice].ProviderId, configuredProject.Steps[Stage.Voice].ProviderId);
+        Assert.Equal(project.Steps[Stage.Media].ProviderId, configuredProject.Steps[Stage.Media].ProviderId);
+        string[] newTextProviders = ["openrouter", "chatgpt-subscription", "anthropic", "claude-code", "zai", "moonshot", "minimax", "deepseek", "xai", "supergrok", "custom-text"];
+        foreach (var stageName in new[] { "Giọng đọc", "Hình ảnh & footage" })
+        {
+            await page.Locator(".pipeline-step").Filter(new() { HasText = stageName }).ClickAsync();
+            await stagePanel.GetByRole(AriaRole.Heading, new() { Name = stageName, Exact = true }).WaitForAsync();
+            var options = await providerSelect.Locator("option").EvaluateAllAsync<string[]>("items => items.map(item => item.value)");
+            Assert.Empty(options.Intersect(newTextProviders));
+        }
         Assert.Empty(errors);
     }
 

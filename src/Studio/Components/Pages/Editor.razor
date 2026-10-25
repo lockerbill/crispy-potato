@@ -24,7 +24,7 @@ else
             {
                 var step = project.Steps[active]; var provider = ProviderCatalog.Get(step.ProviderId);
                 <section class="panel stage-workspace" @oninput="MarkDirty" @onchange="MarkDirty"><div class="section-heading"><div><span class="eyebrow">STEP @(((int)active + 1).ToString("D2")) / 10</span><h2>@Ui.StageName(active)</h2></div><span class="status-badge @step.Status.ToString().ToLowerInvariant()">@Ui.Status(step.Status)</span></div>
-                <div class="form-row"><label>Provider<select disabled="@(busy || running)" value="@step.ProviderId" @onchange="e => ChangeProvider(e.Value?.ToString() ?? string.Empty)">@foreach (var candidate in ProviderCatalog.For(active)) { <option value="@candidate.Id">@candidate.Name · @Ui.Tier(candidate.Tier)</option> }</select></label>@if (provider.IsText || provider.Model.Length > 0) { <label>Model<input @bind="step.Model" list="editor-model-options" placeholder="@Ui.T("Để trống để dùng model trong Settings", "Blank uses the Settings model")" /></label> }</div>
+                <div class="form-row"><label>Provider<select aria-label="Provider" disabled="@(!interactiveReady || busy || running)" value="@step.ProviderId" @onchange="e => ChangeProvider(e.Value?.ToString() ?? string.Empty)">@foreach (var candidate in ProviderCatalog.For(active)) { <option value="@candidate.Id">@candidate.Name · @Ui.Tier(candidate.Tier)</option> }</select></label>@if (provider.IsText || provider.Model.Length > 0) { <label>Model<input @bind="step.Model" list="editor-model-options" placeholder="@Ui.T("Để trống để dùng model trong Settings", "Blank uses the Settings model")" /></label> }</div>
                 <datalist id="editor-model-options">@foreach (var model in editorModels) { <option value="@model.Id">@model.Name</option> }</datalist>
                 @if (provider.SupportsModelDiscovery) { <button class="text-button" disabled="@(busy || running)" @onclick="LoadEditorModels">@Ui.T("Đọc danh sách model", "Load models") ↻</button> }
                 @if (active == Stage.Voice && provider.Id != "piper") { <label>@Ui.T("Voice ID (để trống để dùng mặc định)", "Voice ID (blank uses the default)")<input @bind="step.Voice" /></label> }
@@ -93,32 +93,43 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
     Project? project; List<AssetRow> mediaAssets = []; List<JobRow> jobs = []; List<ChargeRow> charges = []; List<RevisionRow> history = [];
-    string? stepQuote; Stage active = Stage.Topic; string tab = "step"; string tagsText = ""; string? message; bool error; bool busy; bool dirty; bool running; decimal spent;
+    string? stepQuote; Stage active = Stage.Topic; string tab = "step"; string tagsText = ""; string? message; bool error; bool busy; bool interactiveReady; bool dirty; bool running; decimal spent;
     string privacy = "private"; bool madeForKids; bool uploadApproved; Guid? reconcileId; decimal reconcileAmount; bool reconcileApproved;
     readonly CancellationTokenSource lifetime = new(); Task? pollTask; IReadOnlyList<ProviderModel> editorModels = [];
     string BudgetPercent => (project!.BudgetUsd <= 0 ? (spent > 0 ? 100 : 0) : Math.Min(100, spent / project.BudgetUsd * 100)).ToString("0.##", CultureInfo.InvariantCulture);
     protected override async Task OnInitializedAsync() { await Load(); pollTask = Poll(); }
+    protected override void OnAfterRender(bool firstRender) { if (firstRender) { interactiveReady = true; StateHasChanged(); } }
     async Task Load() { project = await Projects.Get(Id); jobs = await Projects.Jobs(Id); charges = await Projects.Charges(Id); mediaAssets = await AssetFiles.List(Id); history = await Projects.History(Id); running = jobs.Any(j => j.Status is "Queued" or "Running"); spent = ProjectService.Committed(charges); tagsText = string.Join(", ", project.Tags); }
     async Task Poll() { try { using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2)); while (await timer.WaitForNextTickAsync(lifetime.Token)) { if (!dirty && !busy) await InvokeAsync(async () => { if (!dirty && !busy) { await Load(); StateHasChanged(); } }); } } catch (OperationCanceledException) { } }
     void MarkDirty() => dirty = true;
     async Task Action(Func<Task> action) { busy = true; error = false; message = null; try { await action(); dirty = false; await Load(); } catch (Exception e) when (e is InvalidOperationException or ProviderException or IOException or HttpRequestException or OperationCanceledException) { error = true; message = e is OperationCanceledException ? Ui.T("Thao tác đã dừng.", "Operation stopped.") : e.Message; } finally { busy = false; } }
     Task Refresh() => Action(async () => { dirty = false; await Load(); });
-    void SelectStage(Stage stage) { active = stage; tab = "step"; stepQuote = null; editorModels = []; }
+    void SelectStage(Stage stage) { if (busy) return; active = stage; tab = "step"; stepQuote = null; editorModels = []; }
     async Task ChangeProvider(string id)
     {
         if (busy || running) return;
+        var targetProject = project!; var targetStage = active; var targetStep = targetProject.Steps[targetStage];
         busy = true; dirty = true; editorModels = []; stepQuote = null;
-        try { var cfg = await Settings.GetProvider(id); project!.Steps[active].ProviderId = id; project.Steps[active].Model = cfg.Model; }
+        try
+        {
+            var cfg = await Settings.GetProvider(id);
+            if (!ReferenceEquals(project, targetProject) || active != targetStage || lifetime.IsCancellationRequested) return;
+            targetStep.ProviderId = id; targetStep.Model = cfg.Model;
+        }
         catch (InvalidOperationException e) { error = true; message = e.Message; }
         finally { busy = false; }
     }
     async Task LoadEditorModels()
     {
+        if (busy || running) return;
+        var targetProject = project!; var targetStage = active; var providerId = targetProject.Steps[targetStage].ProviderId;
         busy = true; message = null; error = false;
         try
         {
-            var cfg = await Settings.GetProvider(project!.Steps[active].ProviderId);
-            editorModels = await Connections.Models(cfg, lifetime.Token);
+            var cfg = await Settings.GetProvider(providerId);
+            var availableModels = await Connections.Models(cfg, lifetime.Token);
+            if (!ReferenceEquals(project, targetProject) || active != targetStage || project.Steps[targetStage].ProviderId != providerId || lifetime.IsCancellationRequested) return;
+            editorModels = availableModels;
             message = Ui.T("Nhập model ID trực tiếp nếu model cần dùng không có trong danh sách. Kiểm tra bảng giá Settings cho model đã chọn.", "Enter a model ID directly if it is not listed. Check Settings pricing for the selected model.");
         }
         catch (Exception e) when (e is InvalidOperationException or ProviderException or HttpRequestException or OperationCanceledException) { error = true; message = e is OperationCanceledException ? Ui.T("Yêu cầu đã dừng.", "Request stopped.") : e.Message; }

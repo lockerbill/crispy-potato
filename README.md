@@ -13,8 +13,8 @@ Mỗi lần tạo video, anh vào giao diện và nhập tham số: chủ đề,
 
 | Bước | Có sẵn (không cần key) | Miễn phí – cloud | Miễn phí – self-hosted | Trả phí – cloud |
 |---|---|---|---|---|
-| 1. Chọn chủ đề | Tự nhập | Google Trends + Gemini / Groq | Google Trends + Ollama | Claude + web search |
-| 2. Kịch bản, tiêu đề, mô tả, tag | Tự viết kịch bản | Gemini / Groq | Ollama | Claude (`claude-opus-5-5`) |
+| 1. Chọn chủ đề | Tự nhập | Google Trends + Gemini / Groq | Google Trends + Ollama / Custom endpoint | Claude + web search, Grok + Web/X search, Google Trends + các LLM trả phí ở bước 2 |
+| 2. Kịch bản, tiêu đề, mô tả, tag | Tự viết kịch bản | Gemini / Groq | Ollama / Custom endpoint (OpenAI-compatible) | Claude (`claude-opus-5-5`), Claude Code CLI (gói Pro/Max), ChatGPT / Codex (gói ChatGPT), xAI Grok (API key hoặc gói SuperGrok), OpenRouter, z.ai GLM, Kimi, MiniMax, DeepSeek |
 | 3. Giọng đọc | | Microsoft Edge TTS | Piper | ElevenLabs |
 | 4. Hình ảnh / footage | Nền màu chuyển động | Pexels / Pixabay | ComfyUI (SD/Flux) | OpenAI Images |
 | 5. Phụ đề chạy từng chữ | Lấy timing từ giọng đọc | Groq Whisper | Whisper.net | OpenAI Whisper |
@@ -62,6 +62,21 @@ Mở **http://localhost:8080**. Image đã có sẵn FFmpeg, Piper (giọng `vi_
 - **Anthropic (Claude)**: https://platform.claude.com/settings/keys
 - **ElevenLabs**: https://elevenlabs.io. Model mặc định `eleven_turbo_v2_5` hỗ trợ tiếng Việt.
 - **OpenAI** (ảnh + Whisper): https://platform.openai.com/api-keys
+- **OpenRouter** (một key, hàng trăm model): https://openrouter.ai/keys
+- **z.ai / GLM**: https://z.ai/manage-apikey/apikey-list (gói GLM Coding Plan: đổi Base URL thành `https://api.z.ai/api/coding/paas/v4`)
+- **Kimi / Moonshot**: https://platform.moonshot.ai/console/api-keys
+- **MiniMax**: https://platform.minimax.io
+- **DeepSeek**: https://platform.deepseek.com/api_keys
+- **xAI (Grok)**: https://console.x.ai
+- **Custom endpoint**: server bất kỳ có API kiểu OpenAI (`/v1/chat/completions`) như LM Studio, vLLM, LiteLLM, llama.cpp. Nhập Base URL, model, key nếu có.
+
+## Dùng gói trả phí sẵn có thay cho API key
+
+Trang **Cài đặt → Tài khoản đăng nhập** có nút **Đăng nhập** cho từng tài khoản. Bấm vào, mở link hiện ra, đăng nhập rồi nhập mã; trang tự cập nhật khi xong. Cách này dùng mã thiết bị (device code) nên chạy được cả trong Docker hay trên máy chủ, không cần mở cổng. Token lưu ở `data/oauth/` và tự gia hạn.
+
+- **ChatGPT / Codex**: dùng hạn mức gói ChatGPT Plus/Pro/Business với model Codex (mặc định `gpt-5.5`). Nếu báo lỗi khi xin mã, bật *Device code login* trong ChatGPT → Settings → Security. Đã đăng nhập Codex CLI (`codex login`) thì có thể bấm **Nhập từ CLI**.
+- **xAI Grok (SuperGrok / X Premium+)**: dùng gói SuperGrok, không cần API key.
+- **Claude Pro/Max**: app không đăng nhập thẳng vào tài khoản Claude, vì điều khoản của Anthropic không cho dùng token gói Pro/Max trong ứng dụng khác. Thay vào đó, provider **Claude Code CLI** gọi `claude -p` của Claude Code chính chủ trên máy anh. Cài Claude Code, chạy `claude login` một lần, rồi bấm nút *Claude CLI* trong Cài đặt để kiểm tra. Image Docker không có sẵn Claude Code. Muốn trả theo token thì dùng provider Claude với Anthropic API key như cũ.
 
 Có hai cách nhập key:
 - Vào trang **Cài đặt**. Key được lưu ở `data/settings.json` trên máy anh; file này không được commit lên git.
@@ -82,6 +97,7 @@ assets/music/                  bỏ file nhạc nền có giấy phép vào đâ
 ## Thêm provider mới
 
 1. Tạo class kế thừa `ProviderBase` và implement interface của bước tương ứng (`ITtsProvider`, `IMediaProvider`...).
+   Riêng LLM cho bước chủ đề/kịch bản: chỉ cần một `ILlmClient` rồi gọi `services.AddLlmVendor(new LlmVendorInfo(...), sp => client)`. Dịch vụ có API kiểu OpenAI thì thêm một `CompatibleVendor` trong `Llm/Compatible/CompatibleRegistration.cs`. Đăng nhập OAuth thì implement `IOAuthAccount` (xem `Llm/Codex`, `Llm/Xai`).
 2. Nếu provider cần key, khai báo khoá trong `SettingCatalog`.
 3. Đăng ký provider bằng một dòng trong `ServiceCollectionExtensions.AddFacelessProviders`.
 

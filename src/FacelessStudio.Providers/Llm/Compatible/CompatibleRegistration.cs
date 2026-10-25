@@ -54,7 +54,7 @@ public static class CompatibleRegistration
                 JsonModeSetting: SettingKeys.CustomLlmJsonMode, ApiKeyOptional: true),
             new LlmVendorInfo("openai-compat", "Custom endpoint (OpenAI-compatible)", ProviderCategory.FreeSelfHosted,
                 "Kết nối bất kỳ server API kiểu OpenAI nào: LM Studio, vLLM, LiteLLM, llama.cpp...",
-                "Miễn phí (chạy trên máy bạn)"));
+                "Miễn phí (chạy trên máy anh)"));
 
         return services;
     }

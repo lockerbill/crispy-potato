@@ -23,9 +23,9 @@ public class CompatibleLlmTests
         // id, key setting, url fragment (full), default model, response_format type, expected max_tokens
         { "openrouter", SettingKeys.OpenRouterApiKey, "https://openrouter.ai/api/v1/chat/completions", "openrouter/auto", "json_object", 16000 },
         { "zai", SettingKeys.ZaiApiKey, "https://api.z.ai/api/paas/v4/chat/completions", "glm-5", "json_object", 16000 },
-        { "kimi", SettingKeys.MoonshotApiKey, "https://api.moonshot.ai/v1/chat/completions", "kimi-k2.5", "json_object", 16000 },
-        { "minimax", SettingKeys.MiniMaxApiKey, "https://api.minimax.io/v1/chat/completions", "MiniMax-M2.7", "", 16000 },
-        { "deepseek", SettingKeys.DeepSeekApiKey, "https://api.deepseek.com/chat/completions", "deepseek-chat", "json_object", 8192 },
+        { "kimi", SettingKeys.MoonshotApiKey, "https://api.moonshot.ai/v1/chat/completions", "kimi-k3", "json_object", 16000 },
+        { "minimax", SettingKeys.MiniMaxApiKey, "https://api.minimax.io/v1/chat/completions", "MiniMax-M3", "", 16000 },
+        { "deepseek", SettingKeys.DeepSeekApiKey, "https://api.deepseek.com/chat/completions", "deepseek-flash", "json_object", 8192 },
     };
 
     [Theory]

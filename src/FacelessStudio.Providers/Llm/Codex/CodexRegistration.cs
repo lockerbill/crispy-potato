@@ -12,7 +12,7 @@ public static class CodexRegistration
         services.AddSingleton<CodexAccount>();
         services.AddSingleton<IOAuthAccount>(sp => sp.GetRequiredService<CodexAccount>());
         services.AddLlmVendor(new LlmVendorInfo("codex", "ChatGPT / Codex (gói ChatGPT)", ProviderCategory.PaidCloud,
-                "Dùng gói ChatGPT Plus/Pro của bạn với model Codex/GPT-5, đăng nhập trong Cài đặt → Tài khoản đăng nhập.",
+                "Dùng gói ChatGPT Plus/Pro của anh với model Codex/GPT-5, đăng nhập trong Cài đặt → Tài khoản đăng nhập.",
                 CostNote: "Tính vào gói ChatGPT, không trả theo token"),
             sp => new CodexClient(sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<OAuthSession>(),
                 sp.GetRequiredService<CodexAccount>()));

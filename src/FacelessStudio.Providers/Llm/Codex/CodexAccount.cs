@@ -19,7 +19,8 @@ public sealed class CodexAccount(IHttpClientFactory httpFactory) : IOAuthAccount
     public string Name => "ChatGPT / Codex";
 
     public string Help => "Cần gói ChatGPT Plus/Pro/Business. Nếu báo lỗi khi xin mã: bật Device code login trong " +
-                          "ChatGPT → Settings → Security. Hoặc cài Codex CLI, chạy codex login rồi bấm Nhập từ CLI.";
+                          "ChatGPT → Settings → Security. Hoặc cài Codex CLI, chạy codex login rồi bấm Nhập từ CLI " +
+                          "(sau đó Codex CLI có thể phải đăng nhập lại vì hai bên dùng chung refresh token).";
 
     public bool CanImport => true;
 
@@ -31,7 +32,7 @@ public sealed class CodexAccount(IHttpClientFactory httpFactory) : IOAuthAccount
             throw new ProviderException("ChatGPT chưa cho đăng nhập bằng mã thiết bị. Hãy bật \"Device code login\" trong " +
                                         "ChatGPT → Settings → Security (hoặc nhờ quản trị viên workspace bật).");
         if (status == HttpStatusCode.TooManyRequests)
-            throw new ProviderException("ChatGPT: bạn xin mã đăng nhập quá nhiều lần (429). Đợi vài phút rồi thử lại.");
+            throw new ProviderException("ChatGPT: xin mã đăng nhập quá nhiều lần (429). Đợi vài phút rồi thử lại.");
         if (status != HttpStatusCode.OK)
             throw new ProviderException($"ChatGPT không cấp mã đăng nhập (lỗi {(int)status}). {Trim(text)}");
 

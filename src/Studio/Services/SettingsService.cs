@@ -15,7 +15,12 @@ public sealed class SettingsService(IDbContextFactory<StudioDb> dbFactory, IData
         await using var db = await dbFactory.CreateDbContextAsync();
         var row = await db.Settings.FindAsync("provider:" + id);
         var cfg = row is null ? new ProviderConfig { Id = id, Model = def.Model } : Json.Read<ProviderConfig>(row.Json);
-        cfg.Configured = !def.NeedsKey || row?.ProtectedSecret is not null;
+        cfg.Configured = def.Auth switch
+        {
+            ProviderAuth.OAuth => (await db.Settings.FindAsync("oauth:" + id))?.ProtectedSecret is not null,
+            ProviderAuth.ClaudeCode => !string.IsNullOrWhiteSpace(cfg.Executable),
+            _ => !def.NeedsKey || row?.ProtectedSecret is not null
+        };
         return cfg;
     }
     public async Task<string?> Secret(string key)
@@ -27,11 +32,19 @@ public sealed class SettingsService(IDbContextFactory<StudioDb> dbFactory, IData
     public async Task SaveProvider(ProviderConfig cfg, string? newKey = null, bool clearSecret = false)
     {
         var def = ProviderCatalog.Get(cfg.Id);
-        if (cfg.UsdPerUnit < 0 || cfg.OutputUsdPerUnit < 0) throw new InvalidOperationException("Giá không được âm.");
-        if (def.Tier == ProviderTier.SelfHosted && cfg.Endpoint.Length > 0)
+        if (cfg.UsdPerUnit < 0 || cfg.OutputUsdPerUnit < 0 || cfg.SubscriptionReserveUsd < 0) throw new InvalidOperationException("Giá không được âm.");
+        if ((def.Tier == ProviderTier.SelfHosted || cfg.Id == "custom-text") && cfg.Endpoint.Length > 0)
         {
-            if (!Uri.TryCreate(cfg.Endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || uri.UserInfo.Length > 0)
+            if (!Uri.TryCreate(cfg.Endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0)
                 throw new InvalidOperationException("Endpoint phải là HTTP(S), không chứa credentials.");
+        }
+        if (def.Auth is ProviderAuth.OAuth or ProviderAuth.ClaudeCode && !string.IsNullOrWhiteSpace(newKey))
+            throw new InvalidOperationException("Kết nối này không nhận API key / This connection does not accept an API key.");
+        var prior = await GetProvider(cfg.Id);
+        if (prior.Model != cfg.Model || prior.Endpoint != cfg.Endpoint || prior.Executable != cfg.Executable || !string.IsNullOrWhiteSpace(newKey) || clearSecret)
+        {
+            cfg.LastCheck = null;
+            cfg.CheckedAt = null;
         }
         await Save("provider:" + cfg.Id, cfg, newKey, clearSecret);
     }

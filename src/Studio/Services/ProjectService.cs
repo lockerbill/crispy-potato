@@ -141,7 +141,8 @@ public sealed class ProjectService(IDbContextFactory<StudioDb> factory, Settings
             if (unresolved.Count > 0) throw new InvalidOperationException("Có lần chạy chưa rõ kết quả. Tiếp tục job đã gửi hoặc xác nhận đối soát trong lịch sử trước khi tạo job mới.");
             var config = await settings.GetProvider(step.ProviderId); var provider = ProviderCatalog.Get(step.ProviderId);
             if (!provider.Stages.Contains(stage)) throw new InvalidOperationException("Provider không hỗ trợ bước này.");
-            if (provider.NeedsKey && !config.Configured) throw new InvalidOperationException("Chưa có API key. Cấu hình trong Settings.");
+            if ((provider.NeedsKey || provider.Auth is ProviderAuth.OAuth or ProviderAuth.ClaudeCode) && !config.Configured)
+                throw new InvalidOperationException("Chưa kết nối provider. Cấu hình trong Settings / Provider is not connected. Configure it in Settings.");
             if (provider.Tier == ProviderTier.FreeCloud && provider.Id != "pexels" && !config.FreePlanConfirmed) throw new InvalidOperationException("Xác nhận tài khoản/resource đang dùng free tier trong Settings trước khi chạy; key của paid plan có thể phát sinh phí.");
             await registry.Get(provider.Id).Validate(config, stage, CancellationToken.None);
             if (provider.Tier == ProviderTier.Paid && step.Model.Length > 0 && step.Model != config.Model) throw new InvalidOperationException("Model khác bảng giá Settings. Cập nhật model và giá tương ứng trước khi chạy.");
@@ -154,7 +155,7 @@ public sealed class ProjectService(IDbContextFactory<StudioDb> factory, Settings
             SaveRevision(db, row, p, "Queue " + stage);
             job.RequestJson = Json.Write(p);
             db.Jobs.Add(job);
-            db.Charges.Add(new ChargeRow { ProjectId = id, JobId = job.Id, ProviderId = provider.Id, Stage = stage.ToString(), AmountUsd = estimate, PriceVersion = config.PriceVersion, Note = provider.Tier is ProviderTier.Paid ? "Conservative estimate; provider invoice is authoritative." : "No API charge assumed for the selected free/local tier; check account plan." });
+            db.Charges.Add(new ChargeRow { ProjectId = id, JobId = job.Id, ProviderId = provider.Id, Stage = stage.ToString(), AmountUsd = estimate, PriceVersion = config.PriceVersion, Note = provider.Pricing == ProviderPricing.SubscriptionReserve ? "Subscription reservation, not a provider spending cap; reconcile extra usage with your account." : provider.Tier is ProviderTier.Paid ? "Conservative estimate; provider invoice is authoritative." : "No API charge assumed for the selected free/local tier; check account plan." });
             await db.SaveChangesAsync(); return job.Id;
         }
         finally { Gate.Release(); }

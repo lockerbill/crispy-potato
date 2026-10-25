@@ -15,6 +15,7 @@ public interface ISubscriptionAuth
     Task<ProviderConnectionStatus> Status(string providerId, CancellationToken ct);
     Task<OAuthStartResult> Begin(string providerId, string binding, CancellationToken ct);
     Task<ProviderConnectionStatus> Poll(string providerId, string flowId, string binding, CancellationToken ct);
+    Task CancelPending(string providerId, string flowId, string binding, CancellationToken ct);
     Task CompleteChatGpt(string state, string code, string issuedClientId, string binding, CancellationToken ct);
     Task Disconnect(string providerId, CancellationToken ct);
     Task<string> AccessToken(string providerId, bool forceRefresh, CancellationToken ct);

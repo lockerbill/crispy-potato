@@ -10,11 +10,17 @@ public static class BudgetService
     public static decimal Estimate(Project p, Stage stage, ProviderConfig cfg)
     {
         var provider = ProviderCatalog.Get(cfg.Id);
+        if (provider.Pricing == ProviderPricing.SubscriptionReserve)
+        {
+            if (cfg.SubscriptionReserveUsd is not > 0)
+                throw new InvalidOperationException("Nhập khoản dự phòng subscription USD mỗi lần gọi lớn hơn 0 / Enter a positive subscription reservation per request.");
+            return Round(cfg.SubscriptionReserveUsd.Value);
+        }
         if (provider.Tier != ProviderTier.Paid) return 0;
         if (cfg.UsdPerUnit is null || cfg.PriceAsOf is null || string.IsNullOrWhiteSpace(cfg.PriceVersion))
             throw new InvalidOperationException("Chưa có bảng giá đã xác nhận. Vào Settings nhập giá, ngày và phiên bản giá.");
         decimal units;
-        if (cfg.Id == "openai-text")
+        if (provider.Pricing == ProviderPricing.Tokens)
         {
             if (cfg.OutputUsdPerUnit is null) throw new InvalidOperationException("Thiếu giá output token.");
             // UTF-8 bytes conservatively bound input tokens, including formatting overhead.

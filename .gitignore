@@ -433,3 +433,4 @@ obj/
 output/
 data/
 *.user
+.secrets

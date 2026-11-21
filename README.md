@@ -1,6 +1,6 @@
 # Faceless Studio
 
-Ứng dụng tạo video YouTube **faceless** (không lộ mặt) tự động, viết bằng **.NET 11 (RC2) + Blazor**.
+Ứng dụng tạo video YouTube **faceless** (không lộ mặt) tự động, viết bằng **.NET 11 + Blazor**.
 
 Mỗi lần tạo video, anh vào giao diện và nhập tham số: chủ đề, ngôn ngữ, độ dài, giọng đọc, ngân sách. Sau đó chọn provider cho từng bước rồi bấm **Tạo video**. Chương trình tự chạy hết 7 bước và cho ra:
 

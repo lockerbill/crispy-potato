@@ -12,11 +12,11 @@ New-Item -ItemType Directory -Force -Path $data | Out-Null
 
 function Has($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
 
-# 1. .NET 11 SDK (RC2)
+# 1. .NET 11 SDK
 $sdks = if (Has "dotnet") { dotnet --list-sdks } else { "" }
 if ($sdks -notmatch "^11\.0\.") {
-    Write-Host ">> Cài .NET 11 SDK (preview/RC)..." -ForegroundColor Cyan
-    winget install --id Microsoft.DotNet.SDK.Preview -e --accept-source-agreements --accept-package-agreements
+    Write-Host ">> Cài .NET 11 SDK..." -ForegroundColor Cyan
+    winget install --id Microsoft.DotNet.SDK.11 -e --accept-source-agreements --accept-package-agreements
 } else {
     Write-Host "OK  .NET 11 SDK đã có" -ForegroundColor Green
 }

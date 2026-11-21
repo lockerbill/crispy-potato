@@ -1,13 +1,13 @@
-# Faceless Studio cho Linux: .NET 11 RC2 + FFmpeg + Piper (giọng Việt, Anh) + font tiếng Việt.
+# Faceless Studio cho Linux: .NET 11 + FFmpeg + Piper (giọng Việt, Anh) + font tiếng Việt.
 # Build từ thư mục gốc repo:  docker build -f docker/Dockerfile -t faceless-studio .
 
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props FacelessStudio.slnx ./
 COPY src/ src/
 RUN dotnet publish src/FacelessStudio.Web -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2
+FROM mcr.microsoft.com/dotnet/aspnet:11.0
 ARG TARGETARCH
 ARG PIPER_VERSION=2023.11.14-2
 ARG VOICES_URL=https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0

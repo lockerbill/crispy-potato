@@ -56,12 +56,12 @@ public class ShotstackTests
         using var sp = http.BuildServices();
         var ctx = FakeHttp.Context(new() { [SettingKeys.ShotstackSandboxKey] = "ss" });
         var plan = Plan(ctx.WorkDir, [new RenderScene(0, 0, 2, [new MediaAsset(MediaKind.Gradient, null, null)])]);
-        await ff.RunAsync(["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "2", plan.NarrationPath]);
-        await File.WriteAllTextAsync(plan.SrtPath, "1\n00:00:00,000 --> 00:00:01,000\nxin chào\n");
+        await ff.RunAsync(["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "2", plan.NarrationPath], ct: TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(plan.SrtPath, "1\n00:00:00,000 --> 00:00:01,000\nxin chào\n", TestContext.Current.CancellationToken);
 
         await FakeHttp.Provider<IRenderProvider>(sp, "render-shotstack-sandbox").RenderAsync(plan, ctx);
 
-        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(plan.OutputPath));
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(plan.OutputPath, TestContext.Current.CancellationToken));
         var render = http.Requests.First(r => r.Url.EndsWith("/edit/stage/render"));
         Assert.Equal("ss", render.Headers["x-api-key"]);
         Assert.Equal("https://cdn.shotstack/file",

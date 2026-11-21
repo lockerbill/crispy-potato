@@ -36,7 +36,7 @@ public class MediaProviderTests
         var ctx = FakeHttp.Context(new() { [SettingKeys.ElevenLabsApiKey] = "el" });
         var res = await FakeHttp.Provider<ITtsProvider>(sp, "tts-elevenlabs")
             .SynthesizeAsync("a", Path.Combine(ctx.WorkDir, "v"), ctx);
-        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(res.AudioPath));
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(res.AudioPath, TestContext.Current.CancellationToken));
         Assert.Single(res.Words!);
         var req = Assert.Single(http.Requests);
         Assert.Contains("/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/with-timestamps", req.Url);
@@ -95,7 +95,7 @@ public class MediaProviderTests
             new MediaRequest(Scene, 3, 2, 5, 1920, 1080), FakeHttp.Context(new() { [SettingKeys.OpenAiApiKey] = "o" }));
         var asset = Assert.Single(media);
         Assert.Equal(MediaKind.Image, asset.Kind);
-        Assert.Equal([9, 9], await File.ReadAllBytesAsync(asset.LocalPath!));
+        Assert.Equal([9, 9], await File.ReadAllBytesAsync(asset.LocalPath!, TestContext.Current.CancellationToken));
         var body = JsonNode.Parse(http.Requests[0].Body)!;
         Assert.Equal("1536x1024", body["size"]!.GetValue<string>());
         Assert.Contains("deep blue ocean", body["prompt"]!.GetValue<string>());
@@ -111,7 +111,7 @@ public class MediaProviderTests
         using var sp = http.BuildServices();
         var media = await FakeHttp.Provider<IMediaProvider>(sp, "media-comfyui").GetAsync(
             new MediaRequest(Scene, 0, 1, 5, 1080, 1920), FakeHttp.Context(new()));
-        Assert.Equal([7], await File.ReadAllBytesAsync(Assert.Single(media).LocalPath!));
+        Assert.Equal([7], await File.ReadAllBytesAsync(Assert.Single(media).LocalPath!, TestContext.Current.CancellationToken));
         var workflow = JsonNode.Parse(http.Requests[0].Body)!["prompt"]!;
         Assert.Equal(768, workflow["5"]!["inputs"]!["width"]!.GetValue<int>());
         Assert.Contains("deep blue ocean", workflow["6"]!["inputs"]!["text"]!.GetValue<string>());

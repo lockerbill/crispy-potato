@@ -32,6 +32,8 @@ tests/FacelessStudio.Tests/    xUnit; FakeHttp.cs giả lập HTTP cho provider 
 
 - SDK pin trong `global.json`; `TargetFramework` đặt chung ở `Directory.Build.props` (và lặp lại trong từng csproj — đổi thì đổi cả hai).
 - Solution dùng định dạng `.slnx`.
+- `TreatWarningsAsErrors=true` (trong `Directory.Build.props`): mọi warning đều làm build fail, kể cả analyzer của xUnit — sửa warning, đừng tắt.
+- Test dùng **xUnit v3** chạy trên Microsoft.Testing.Platform (bật qua mục `test.runner` trong `global.json`). Trong test, truyền `TestContext.Current.CancellationToken` cho các hàm nhận `CancellationToken` (rule xUnit1051).
 
 ```bash
 dotnet build FacelessStudio.slnx

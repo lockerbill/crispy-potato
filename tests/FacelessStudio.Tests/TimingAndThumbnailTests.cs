@@ -44,7 +44,7 @@ public class TimingAndThumbnailTests
         using var sp = http.BuildServices();
         var ctx = FakeHttp.Context(new() { [SettingKeys.GroqApiKey] = "gq" });
         var wav = Path.Combine(ctx.WorkDir, "n.wav");
-        await ctx.Ffmpeg.RunAsync(["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "4", wav]);
+        await ctx.Ffmpeg.RunAsync(["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "4", wav], ct: TestContext.Current.CancellationToken);
 
         var words = await FakeHttp.Provider<ITimingProvider>(sp, "timing-groq")
             .AlignAsync(new TimingRequest(Scenes, Script, wav), ctx);

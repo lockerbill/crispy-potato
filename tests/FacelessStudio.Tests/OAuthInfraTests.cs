@@ -168,7 +168,7 @@ public class OAuthInfraTests
 
 
             """;
-        Assert.Equal("{\"a\":1}", await ResponsesApi.ReadSseTextAsync(new MemoryStream(Encoding.UTF8.GetBytes(sse)), "X", default));
+        Assert.Equal("{\"a\":1}", await ResponsesApi.ReadSseTextAsync(new MemoryStream(Encoding.UTF8.GetBytes(sse)), "X", TestContext.Current.CancellationToken));
 
         var failed = """
             data: {"type":"response.failed","response":{"status":"failed","error":{"code":"usage_limit","message":"quota hết"}}}
@@ -176,7 +176,7 @@ public class OAuthInfraTests
 
             """;
         var ex = await Assert.ThrowsAsync<ProviderException>(() =>
-            ResponsesApi.ReadSseTextAsync(new MemoryStream(Encoding.UTF8.GetBytes(failed)), "X", default));
+            ResponsesApi.ReadSseTextAsync(new MemoryStream(Encoding.UTF8.GetBytes(failed)), "X", TestContext.Current.CancellationToken));
         Assert.Contains("quota hết", ex.Message);
     }
 

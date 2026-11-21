@@ -92,8 +92,8 @@ public class PipelineTests
         var folder = jobs.FolderPath(job)!;
         Assert.True(File.Exists(Path.Combine(folder, "video.mp4")));
         Assert.True(File.Exists(Path.Combine(folder, "thumbnail.jpg")));
-        Assert.Contains("-->", await File.ReadAllTextAsync(Path.Combine(folder, "subtitles.srt")));
+        Assert.Contains("-->", await File.ReadAllTextAsync(Path.Combine(folder, "subtitles.srt"), TestContext.Current.CancellationToken));
         Console.WriteLine("E2E output: " + folder);
-        await File.WriteAllTextAsync(Path.Combine(Path.GetTempPath(), $"faceless-e2e-{language}-{timing}-{voice}.txt"), folder);
+        await File.WriteAllTextAsync(Path.Combine(Path.GetTempPath(), $"faceless-e2e-{language}-{timing}-{voice}.txt"), folder, TestContext.Current.CancellationToken);
     }
 }

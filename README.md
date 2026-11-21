@@ -1,6 +1,6 @@
 # Frame Studio — YouTube Video Studio
 
-Studio cá nhân viết bằng **C#/.NET 11 RC2 + Blazor Interactive Server**, từ chủ đề đến MP4 và upload YouTube. Giao diện tiếng Việt/Anh, video tiếng Việt/Anh, Short 9:16 hoặc dài 16:9, chọn provider độc lập ở cả 10 công đoạn.
+Studio cá nhân viết bằng **C#/.NET 11 GA + Blazor Interactive Server**, từ chủ đề đến MP4 và upload YouTube. Giao diện tiếng Việt/Anh, video tiếng Việt/Anh, Short 9:16 hoặc dài 16:9, chọn provider độc lập ở cả 10 công đoạn.
 
 ## Chạy bằng Docker
 
@@ -22,7 +22,7 @@ Mở cổng **5080 trên máy chạy Studio** để đăng nhập. Xem [hướng
 
 ## Chạy từ source
 
-SDK được ghim trong `global.json`: `11.0.100-rc.2.26504.105`. Cần FFmpeg/ffprobe với libass, libx264, AAC và font DejaVu Sans hỗ trợ tiếng Việt. Không cần Node/npm cho ứng dụng.
+SDK được ghim trong `global.json`: `11.0.100`. Cần FFmpeg/ffprobe với libass, libx264, AAC và font DejaVu Sans hỗ trợ tiếng Việt. Không cần Node/npm cho ứng dụng.
 
 ```bash
 dotnet restore YouTubeStudio.slnx --locked-mode
@@ -105,5 +105,5 @@ Claude Code subscription, SuperGrok thử nghiệm, model discovery và ngân s�
 Các kết nối này chỉ phục vụ năm bước văn bản. API key và subscription là các lựa chọn
 riêng; ứng dụng không tự chuyển loại thanh toán khi hết quota.
 
-Nhánh tích hợp của dự án là **`codex/youtube-video-studio`**. Không merge công việc
-Studio vào `main` hoặc `claude/faceless-studio-dotnet`.
+Codex mặc định làm việc trên **`codex/main`**. Khi được yêu cầu tạo nhánh riêng,
+tạo nhánh từ `origin/codex/main` mới nhất và mở PR để merge về `codex/main`.

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2@sha256:e2438fd800a09d2d761aefe4edd30675c8f1db8958e4423c0844cc9a0240e60f AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea AS build
 WORKDIR /source
 COPY global.json Directory.Build.props ./
 COPY src/Studio/ src/Studio/
@@ -9,7 +9,7 @@ RUN --mount=type=secret,id=proxy_ca \
     dotnet publish src/Studio/Studio.csproj -c Release --no-restore -o /publish /p:UseAppHost=false && \
     rm -rf /tmp/.dotnet /root/.dotnet/shm
 
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2@sha256:ca60823900e34e488caed1df187266fa02e3b59d1180c8db728b6cb727212ba2 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0@sha256:bc0d6653979efba491ab3d6f589d691f96c309c3c3ef81325efa6978e7b7f242 AS runtime
 USER root
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export SSL_CERT_FILE=/run/secrets/proxy_ca; \

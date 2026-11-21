@@ -1,5 +1,14 @@
 # Verification record
 
+## .NET 11 GA on `codex/main` — 2026-11-21
+
+- The SHA-512-verified SDK reported `11.0.100`. Locked solution restore and Release build passed with 0 warnings and 0 errors. The repository bootstrap script also passed.
+- All 137 tests passed with 0 skipped, including the Chromium browser and FFmpeg media tests.
+- The Docker image built from the pinned GA base images. The container ran as UID 1654 with .NET and ASP.NET Core runtimes `11.0.0`. The health endpoint, owner login and authenticated dashboard passed.
+- A fresh container mounted the same test volume without a bootstrap password. The original owner could sign in and open the dashboard using the persisted SQLite data.
+
+Local evidence is in `.artifacts/test-results/dotnet11-ga.trx`, `.artifacts/dotnet11-ga-build.log` and `.artifacts/dotnet11-ga-smoke.txt`.
+
 ## LLM provider expansion — 2026-10-25
 
 Verified the integrated implementation at `6397201` on `codex/youtube-video-studio`.

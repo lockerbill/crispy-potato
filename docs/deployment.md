@@ -12,7 +12,7 @@ Nếu không có checkpoint an toàn, đối chiếu dashboard/billing provider 
 
 ## Docker local / Linux VPS
 
-Image chạy bằng user `app` (UID 1654), chứa .NET 11 RC2, FFmpeg và font. Thư mục model/engine trên host mount read-only. Chưa có API keys thì Studio vẫn khởi động và cho cấu hình dự án; không tự sinh credentials.
+Image chạy bằng user `app` (UID 1654), chứa .NET 11.0.0 GA, FFmpeg và font. Thư mục model/engine trên host mount read-only. Chưa có API keys thì Studio vẫn khởi động và cho cấu hình dự án; không tự sinh credentials.
 
 `STUDIO_ADMIN_PASSWORD_FILE` đọc mật khẩu lần khởi tạo đầu tiên. Đổi file không tự thay tài khoản đã có. Để reset, cập nhật file secret rồi dừng instance đang chạy và dùng:
 
